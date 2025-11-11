@@ -16,12 +16,20 @@ export function CommonLayout({ children }: CommonLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   const { auth } = useAuthStore()
   
-  // Mock user data - replace with actual user data from your auth system
+  // Build user display info from auth store
+  const displayName =
+    auth.student?.fullName ||
+    auth.user?.name ||
+    (auth.user?.email ? auth.user.email.split('@')[0] : 'Người dùng')
+  const displayEmail = auth.user?.email || ''
+  const displayRole = Array.isArray(auth.user?.role) && auth.user?.role.length > 0
+    ? auth.user.role.join(', ')
+    : 'student'
   const user = {
-    name: auth.user?.email?.split('@')[0] || 'Nguyễn Văn A',
-    email: auth.user?.email || 'nguyenvana@example.com',
+    name: displayName,
+    email: displayEmail,
     avatar: '/avatars/user.jpg',
-    role: 'Quản trị viên'
+    role: displayRole,
   }
 
   const handleLogout = () => {

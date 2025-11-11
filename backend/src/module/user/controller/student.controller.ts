@@ -1,0 +1,30 @@
+import { Controller, Post, Body } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { StudentService } from '../service/student.service';
+import { RegisterStudentDto, LoginStudentDto } from '../dto/student.dto';
+import { User } from '../entities/user.entity';
+import { Student } from '../entities/student.entity';
+
+@ApiTags('students')
+@Controller('students')
+export class StudentController {
+  constructor(private readonly studentService: StudentService) {}
+
+  @Post('register')
+  @ApiOperation({ summary: 'Register a new student' })
+  @ApiResponse({ status: 201, description: 'Student registered successfully' })
+  @ApiResponse({ status: 409, description: 'User with this email already exists' })
+  @ApiResponse({ status: 404, description: 'Cohort not found' })
+  async register(@Body() registerStudentDto: RegisterStudentDto): Promise<{ user: User; student: Student; accessToken: string }> {
+    return await this.studentService.register(registerStudentDto);
+  }
+
+  @Post('login')
+  @ApiOperation({ summary: 'Login student' })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
+  async login(@Body() loginStudentDto: LoginStudentDto): Promise<{ user: User; student: Student; accessToken: string }> {
+    return await this.studentService.login(loginStudentDto);
+  }
+}
+

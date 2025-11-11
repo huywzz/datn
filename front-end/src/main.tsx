@@ -52,17 +52,19 @@ const queryClient = new QueryClient({
     onError: (error) => {
       if (error instanceof AxiosError) {
         if (error.response?.status === 401) {
-          toast.error('Session expired!')
+          toast.error('Phiên đăng nhập đã hết hạn!')
           useAuthStore.getState().auth.reset()
-          const redirect = `${router.history.location.href}`
-          router.navigate({ to: '/sign-in', search: { redirect } })
+          // Use window.location for redirect to ensure it works even if router is not ready
+          const currentPath = window.location.href
+          window.location.href = `/sign-in?redirect=${encodeURIComponent(currentPath)}`
         }
         if (error.response?.status === 500) {
-          toast.error('Internal Server Error!')
-          router.navigate({ to: '/500' })
+          toast.error('Lỗi máy chủ!')
+          // Use window.location for redirect
+          window.location.href = '/500'
         }
         if (error.response?.status === 403) {
-          // router.navigate("/forbidden", { replace: true });
+          // Handle 403 error if needed
         }
       }
     },

@@ -10,9 +10,22 @@ import { commonSidebarData } from './data/common-sidebar-data'
 import { NavGroup } from './nav-group'
 import { NavUser } from './nav-user'
 import { TeamSwitcher } from './team-switcher'
+import { useAuthStore } from '@/stores/auth-store'
 
 export function CommonSidebar() {
   const { collapsible, variant } = useLayout()
+  const { auth } = useAuthStore()
+
+  const displayName =
+    auth.student?.fullName ||
+    auth.user?.name ||
+    (auth.user?.email ? auth.user.email.split('@')[0] : commonSidebarData.user.name)
+  const displayEmail = auth.user?.email || commonSidebarData.user.email
+  const user = {
+    name: displayName,
+    email: displayEmail,
+    avatar: commonSidebarData.user.avatar,
+  }
 
   return (
     <Sidebar collapsible={collapsible} variant={variant}>
@@ -25,7 +38,7 @@ export function CommonSidebar() {
         ))}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={commonSidebarData.user} />
+        <NavUser user={user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

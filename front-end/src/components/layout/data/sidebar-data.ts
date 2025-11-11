@@ -9,16 +9,34 @@ import {
   Calendar,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
+import { getLocalStorage } from '@/lib/local-storage'
+
+// Hydrate sidebar user from localStorage (auth_student) if available
+let hydratedName = 'satnaing'
+let hydratedEmail = 'satnaingdev@gmail.com'
+try {
+  const studentStr = typeof window !== 'undefined' ? getLocalStorage('auth_student') : null
+  if (studentStr) {
+    const student = JSON.parse(studentStr) as {
+      fullName?: string
+      studentCode?: string
+    }
+    if (student?.fullName) hydratedName = student.fullName
+    if (student?.studentCode) hydratedEmail = student.studentCode
+  }
+} catch {
+  // ignore parse errors and keep defaults
+}
 
 export const sidebarData: SidebarData = {
   user: {
-    name: 'satnaing',
-    email: 'satnaingdev@gmail.com',
+    name: hydratedName,
+    email: hydratedEmail,
     avatar: '/avatars/shadcn.jpg',
   },
   teams: [
     {
-      name: 'Nguyễn Văn A',
+      name: hydratedName,
       logo: Command,
       plan: '',
     },

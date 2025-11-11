@@ -1,17 +1,97 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Calendar, Plus, GripVertical, ChevronDown } from 'lucide-react'
-import { fetchSectionsBySubject, fetchSubjects, type Section, type Subject } from './mock-api'
+import { Calendar, Plus, GripVertical, ChevronDown, Loader2, AlertCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { getCourseSections, registerSection, type CourseSection as ApiCourseSection, getMySchedule } from '@/lib/api'
+import type { MyScheduleItem } from '@/lib/interface'
+import { useAvailableCourses, type Subject } from '../hooks/use-available-courses'
 
-// Runtime state for subjects and sections (mocked APIs)
+// Runtime state for subjects and sections
 const subjectColor: Record<string, string> = {
   CS101: 'bg-blue-100 text-blue-800',
   CS102: 'bg-purple-100 text-purple-800',
   CS103: 'bg-red-100 text-red-800',
   CS301: 'bg-green-100 text-green-800',
   CS302: 'bg-orange-100 text-orange-800',
+}
+
+// Generate color for subject code if not in predefined list
+const getSubjectColor = (code: string): string => {
+  if (subjectColor[code]) {
+    return subjectColor[code]
+  }
+  // Generate a consistent color based on code
+  const colors = [
+    'bg-blue-100 text-blue-800',
+    'bg-purple-100 text-purple-800',
+    'bg-red-100 text-red-800',
+    'bg-green-100 text-green-800',
+    'bg-orange-100 text-orange-800',
+    'bg-yellow-100 text-yellow-800',
+    'bg-pink-100 text-pink-800',
+    'bg-indigo-100 text-indigo-800',
+  ]
+  const index = code.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return colors[index % colors.length]
+}
+
+// Subject interface is now imported from use-available-courses hook
+
+interface Section {
+  id: string
+  classCode: string
+  subjectCode: string
+  teacher: string
+  room: string
+  meetings: Array<{ day: 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'CN'; period: number; length: number }>
+}
+
+// Map dayOfWeek (0-6) to day format (CN, T2-T7)
+const mapDayOfWeek = (dayOfWeek: string): 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'CN' => {
+  const dayMap: Record<string, 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'CN'> = {
+    '0': 'CN',
+    '1': 'T2',
+    '2': 'T3',
+    '3': 'T4',
+    '4': 'T5',
+    '5': 'T6',
+    '6': 'T7',
+  }
+  return dayMap[dayOfWeek] || 'T2'
+}
+
+// Map API CourseSection to internal Section format
+const mapApiSectionToSection = (apiSection: ApiCourseSection, subjectCode: string): Section => {
+  // Parse classSchedules from API response
+  const classSchedules = apiSection.classSchedules || []
+  
+  // Convert classSchedules to meetings format
+  const meetings = classSchedules
+    .filter(schedule => schedule && schedule.dayOfWeek && schedule.startPeriod && schedule.endPeriod)
+    .map(schedule => ({
+      day: mapDayOfWeek(schedule.dayOfWeek),
+      period: schedule.startPeriod,
+      length: schedule.endPeriod - schedule.startPeriod + 1,
+    }))
+  
+  // Get room from first schedule or use schedule string
+  const room = classSchedules.length > 0 
+    ? classSchedules[0].room 
+    : apiSection.schedule?.split(' - ')[1] || 'Chưa có thông tin'
+  
+  // Get instructor name
+  const teacher = apiSection.instructor?.fullName || 'Chưa có thông tin'
+  
+  return {
+    id: apiSection.sectionId?.toString() || `section-${Date.now()}`,
+    classCode: apiSection.sectionCode || `SECTION-${apiSection.sectionId}`,
+    subjectCode,
+    teacher,
+    room,
+    meetings,
+  }
 }
 
 // Tiết học thay vì giờ cụ thể
@@ -25,19 +105,80 @@ interface DragDropRegistrationProps {
 }
 
 export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSubjects }: DragDropRegistrationProps) {
-  type ScheduledCell = { subject: Subject; color: string; isHead: boolean; length: number } | null
+  type ScheduledCell = { 
+    subject: Subject
+    sectionId: string // Add sectionId to track which section this cell belongs to
+    color: string
+    isHead: boolean
+    length: number
+  } | null
   const [schedule, setSchedule] = useState<Record<string, Record<number, ScheduledCell>>>({})
   const [draggedSection, setDraggedSection] = useState<Section | null>(null)
-  const [subjects, setSubjects] = useState<Subject[]>([])
   const [sectionsBySubject, setSectionsBySubject] = useState<Record<string, Section[]>>({})
   const [loadingSubject, setLoadingSubject] = useState<string | null>(null)
+  const [registeringSectionIds, setRegisteringSectionIds] = useState<Set<number>>(new Set())
 
-  // Load subjects once
-  if (subjects.length === 0) {
-    // fire and forget (component is client-only)
-    fetchSubjects().then(setSubjects)
-  }
+  // Use shared hook with React Query caching
+  const { subjects, isLoading, error } = useAvailableCourses()
 
+  // Hydrate current timetable from API on mount (after subjects are loaded)
+  const [isHydratedFromApi, setIsHydratedFromApi] = useState(false)
+  useEffect(() => {
+    if (isHydratedFromApi) return
+    if (!subjects || subjects.length === 0) return
+    ;(async () => {
+      try {
+        const mySchedule = await getMySchedule()
+        const apiSchedules: MyScheduleItem[] = mySchedule?.schedules ?? []
+        if (apiSchedules.length === 0) {
+          setIsHydratedFromApi(true)
+          return
+        }
+
+        const newSchedule: typeof schedule = {}
+        const newRegisteredSubjects = new Set<string>(registeredSubjects)
+
+        for (const s of apiSchedules) {
+          const day = mapDayOfWeek(s.dayOfWeek)
+          const start = s.startPeriod
+          const end = s.endPeriod
+          const length = end - start + 1
+          const subjectCode = s.section.courseCode
+
+          const subjectInfo = subjects.find((sub) => sub.code === subjectCode)
+          if (!subjectInfo) {
+            // Skip if we don't know this subject from available list
+            continue
+          }
+
+          const dayMap: Record<number, ScheduledCell> = { ...(newSchedule[day] ?? {}) }
+          for (let p = start; p <= end; p++) {
+            dayMap[p] = {
+              subject: subjectInfo,
+              sectionId: String(s.section.sectionId),
+              color: getSubjectColor(subjectCode),
+              isHead: p === start,
+              length: p === start ? length : 0,
+            }
+          }
+          newSchedule[day] = dayMap
+          newRegisteredSubjects.add(subjectCode)
+        }
+
+        if (Object.keys(newSchedule).length > 0) {
+          setSchedule(newSchedule)
+        }
+        if (newRegisteredSubjects.size !== registeredSubjects.length) {
+          onUpdateRegisteredSubjects(Array.from(newRegisteredSubjects))
+        }
+      } catch (_e) {
+        // Non-blocking: ignore failures here
+      } finally {
+        setIsHydratedFromApi(true)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjects, isHydratedFromApi])
 
   const handleDragStart = (e: React.DragEvent, section: Section) => {
     setDraggedSection(section)
@@ -55,51 +196,137 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const handleDrop = (e: React.DragEvent, _day: string, _period: number) => {
+  const handleDrop = async (e: React.DragEvent, _dropDay: string, _dropPeriod: number) => {
     e.preventDefault()
     
-    if (!draggedSection) return
+    if (!draggedSection) {
+      return
+    }
 
-    const subjectInfo = subjects.find((s: Subject) => s.code === draggedSection.subjectCode) as Subject
+    if (!draggedSection.meetings || draggedSection.meetings.length === 0) {
+      toast.error('Lớp học phần này không có lịch học')
+      setDraggedSection(null)
+      return
+    }
 
-    // Validate all meetings: boundary and conflicts
-    for (const m of draggedSection.meetings) {
-      const endP = m.period + m.length - 1
-      if (endP > periods.length) {
-        setDraggedSection(null)
-        return
-      }
-      const dayMap = schedule[m.day] ?? {}
-      for (let p = m.period; p <= endP; p++) {
-        if (dayMap[p]) {
+    const subjectInfo = subjects.find((s: Subject) => s.code === draggedSection.subjectCode)
+    if (!subjectInfo) {
+      toast.error('Không tìm thấy thông tin môn học')
+      setDraggedSection(null)
+      return
+    }
+
+    // Check if this section is already in the schedule
+    for (const day of Object.keys(schedule)) {
+      const dayMap = schedule[day]
+      if (!dayMap) continue
+      for (const periodKey of Object.keys(dayMap)) {
+        const cell = dayMap[Number(periodKey)]
+        if (cell && cell.sectionId === draggedSection.id) {
+          toast.info('Lớp học phần này đã được thêm vào thời khóa biểu')
           setDraggedSection(null)
           return
         }
       }
     }
 
-    // Place all meetings
+    // Note: When a section has multiple meetings, we place ALL meetings at their API-defined positions
+    // regardless of where the user drops. This is correct behavior since the schedule is fixed.
+    // The drop location is only used to trigger the placement - actual positions come from API.
+
+    // Validate all meetings: boundary and conflicts
+    const conflicts: Array<{ day: string; period: number }> = []
+    for (const m of draggedSection.meetings) {
+      const endP = m.period + m.length - 1
+      
+      // Check boundary
+      if (m.period < 1 || endP > periods.length) {
+        toast.error(`Lịch học vượt quá giới hạn: ${m.day} tiết ${m.period}-${endP}`)
+        setDraggedSection(null)
+        return
+      }
+      
+      // Check conflicts
+      const dayMap = schedule[m.day] ?? {}
+      for (let p = m.period; p <= endP; p++) {
+        const existingCell = dayMap[p]
+        if (existingCell) {
+          conflicts.push({ day: m.day, period: p })
+        }
+      }
+    }
+
+    // If there are conflicts, show error and don't place
+    if (conflicts.length > 0) {
+      const conflictDetails = conflicts
+        .map(c => `${c.day} tiết ${c.period}`)
+        .filter((v, i, a) => a.indexOf(v) === i) // Remove duplicates
+        .join(', ')
+      toast.error(`Xung đột lịch học tại: ${conflictDetails}`)
+      setDraggedSection(null)
+      return
+    }
+
+    // Place all meetings at their correct positions (from API data)
     const newSchedule: typeof schedule = { ...schedule }
+    const placedMeetings: string[] = []
+    const sectionIdNum = Number(draggedSection.id)
+    
     for (const m of draggedSection.meetings) {
       const endP = m.period + m.length - 1
       const dayMap: Record<number, ScheduledCell> = { ...(newSchedule[m.day] ?? {}) }
+      
+      // Place all periods for this meeting
       for (let p = m.period; p <= endP; p++) {
         dayMap[p] = {
           subject: subjectInfo,
-          color: subjectColor[draggedSection.subjectCode] ?? 'bg-muted text-foreground',
+          sectionId: draggedSection.id, // Store sectionId to track all cells of this section
+          color: getSubjectColor(draggedSection.subjectCode),
           isHead: p === m.period,
           length: p === m.period ? m.length : 0,
         }
       }
+      
       newSchedule[m.day] = dayMap
+      placedMeetings.push(`${m.day} tiết ${m.period}-${endP}`)
     }
 
+    // Optimistically update the UI
     setSchedule(newSchedule)
-
-    // Add to registered subjects if not already
     const subjectCode = draggedSection.subjectCode
     if (!registeredSubjects.includes(subjectCode)) {
       onUpdateRegisteredSubjects([...registeredSubjects, subjectCode])
+    }
+
+    // Register with API
+    setRegisteringSectionIds(prev => new Set(prev).add(sectionIdNum))
+    try {
+      await registerSection(sectionIdNum)
+      
+      // Show success message with meeting details
+      if (placedMeetings.length > 1) {
+        toast.success(
+          `Đã đăng ký ${subjectInfo.name} vào ${placedMeetings.length} buổi học: ${placedMeetings.join(', ')}`,
+          { duration: 4000 }
+        )
+      } else {
+        toast.success(`Đã đăng ký ${subjectInfo.name} vào thời khóa biểu: ${placedMeetings[0]}`)
+      }
+    } catch (error) {
+      // Revert optimistic update on error
+      setSchedule(schedule)
+      if (!registeredSubjects.includes(subjectCode)) {
+        onUpdateRegisteredSubjects(registeredSubjects.filter(code => code !== subjectCode))
+      }
+      
+      const errorMessage = error instanceof Error ? error.message : 'Đăng ký lớp học phần thất bại'
+      toast.error(errorMessage)
+    } finally {
+      setRegisteringSectionIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(sectionIdNum)
+        return newSet
+      })
     }
 
     setDraggedSection(null)
@@ -109,32 +336,87 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     const cell = schedule[day]?.[period]
     if (!cell) return
 
-    // Determine the head cell
-    let headPeriod = period
-    if (cell && !cell.isHead) {
-      // scan backwards to find head
-      for (let p = period - 1; p >= 1; p--) {
-        const prevCell = schedule[day]?.[p]
-        if (prevCell?.isHead) {
-          headPeriod = p
-          break
+    // Get the sectionId from the cell
+    const sectionIdToRemove = cell.sectionId
+    const subjectCodeToRemove = cell.subject.code
+
+    if (!sectionIdToRemove) {
+      // Fallback: remove only this day's meeting if sectionId is not available
+      let headPeriod = period
+      if (!cell.isHead) {
+        for (let p = period - 1; p >= 1; p--) {
+          const prevCell = schedule[day]?.[p]
+          if (prevCell?.isHead) {
+            headPeriod = p
+            break
+          }
+          if (!prevCell) break
         }
-        if (!prevCell) break
+      }
+
+      const headCell = schedule[day]?.[headPeriod]
+      if (!headCell) return
+
+      const len = headCell.isHead ? headCell.length : 1
+      const newSchedule = { ...schedule }
+      const newDayMap: Record<number, ScheduledCell> = { ...(newSchedule[day] ?? {}) }
+      
+      for (let p = headPeriod; p < headPeriod + len; p++) {
+        delete newDayMap[p]
+      }
+      
+      if (Object.keys(newDayMap).length === 0) {
+        delete newSchedule[day]
+      } else {
+        newSchedule[day] = newDayMap
+      }
+      
+      setSchedule(newSchedule)
+      onUpdateRegisteredSubjects(registeredSubjects.filter(code => code !== subjectCodeToRemove))
+      return
+    }
+
+    // Remove all cells with the same sectionId across all days
+    const newSchedule: typeof schedule = { ...schedule }
+    let hasRemovedCells = false
+
+    // Iterate through all days and periods to find and remove cells with matching sectionId
+    for (const scheduleDay of Object.keys(newSchedule)) {
+      const dayMap = newSchedule[scheduleDay]
+      if (!dayMap) continue
+
+      const updatedDayMap: Record<number, ScheduledCell> = {}
+      let dayHasChanges = false
+
+      for (const periodKey of Object.keys(dayMap)) {
+        const periodNum = Number(periodKey)
+        const cellToCheck = dayMap[periodNum]
+        
+        if (cellToCheck && cellToCheck.sectionId === sectionIdToRemove) {
+          // Skip this cell (remove it)
+          dayHasChanges = true
+          hasRemovedCells = true
+        } else {
+          // Keep this cell
+          updatedDayMap[periodNum] = cellToCheck
+        }
+      }
+
+      if (dayHasChanges) {
+        if (Object.keys(updatedDayMap).length === 0) {
+          delete newSchedule[scheduleDay]
+        } else {
+          newSchedule[scheduleDay] = updatedDayMap
+        }
       }
     }
 
-    const headCell = schedule[day]?.[headPeriod]
-    if (!headCell) return
-
-    const len = headCell.isHead ? headCell.length : 1
-    const newDayMap: Record<number, ScheduledCell> = { ...(schedule[day] ?? {}) }
-    for (let p = headPeriod; p < headPeriod + len; p++) {
-      newDayMap[p] = null
+    if (hasRemovedCells) {
+      setSchedule(newSchedule)
+      // Remove from registered subjects
+      onUpdateRegisteredSubjects(registeredSubjects.filter(code => code !== subjectCodeToRemove))
+      toast.success(`Đã xóa ${cell.subject.name} khỏi thời khóa biểu`)
     }
-    setSchedule(prev => ({ ...prev, [day]: newDayMap }))
-
-    // Remove from registered subjects
-    onUpdateRegisteredSubjects(registeredSubjects.filter(code => code !== headCell.subject.code))
   }
 
   const getRegisteredCredits = () => {
@@ -142,6 +424,49 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
       const subject = subjects.find((s) => s.code === subjectCode)
       return total + (subject?.credits || 0)
     }, 0)
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <div>
+              <h3 className="text-lg font-semibold">Đang tải danh sách môn học...</h3>
+              <p className="text-muted-foreground">Vui lòng chờ trong giây lát</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="text-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <div className="p-4 bg-destructive/10 rounded-full">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">Lỗi tải dữ liệu</h3>
+              <p className="text-muted-foreground">
+                {error instanceof Error ? error.message : 'Không thể tải danh sách môn học'}
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => window.location.reload()}
+              >
+                Tải lại
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -172,11 +497,15 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
           </CardHeader>
           <CardContent>
               <div className="space-y-3">
-                {subjects.map((subject) => {
+                {subjects.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Không có môn học nào</p>
+                  </div>
+                ) : (
+                  subjects.map((subject) => {
                   const sections = sectionsBySubject[subject.code] ?? []
-                  const isLoading = loadingSubject === subject.code
                   return (
-                    <div key={subject.code} className={`rounded-lg border p-3 ${subjectColor[subject.code] ?? 'bg-muted'}`}>
+                    <div key={subject.code} className={`rounded-lg border p-3 ${getSubjectColor(subject.code)}`}>
                       <div className="flex items-center gap-2">
                         <GripVertical className="h-4 w-4 opacity-50" />
                         <div className="flex-1">
@@ -185,40 +514,107 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                           <Badge variant="outline" className="text-xs mt-1">{subject.type}</Badge>
                         </div>
                         <button
-                          className="inline-flex items-center h-8 px-2 text-xs rounded border bg-white"
+                          className="inline-flex items-center h-8 px-2 text-xs rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          disabled={loadingSubject === subject.code}
                           onClick={async () => {
-                            if (sectionsBySubject[subject.code]) return
+                            if (sectionsBySubject[subject.code]) {
+                              // Toggle: hide sections if already loaded
+                              setSectionsBySubject((prev) => {
+                                const newState = { ...prev }
+                                delete newState[subject.code]
+                                return newState
+                              })
+                              return
+                            }
+                            
                             setLoadingSubject(subject.code)
-                            const data = await fetchSectionsBySubject(subject.code)
-                            setSectionsBySubject((prev) => ({ ...prev, [subject.code]: data }))
-                            setLoadingSubject(null)
+                            try {
+                              const apiSections = await getCourseSections(subject.courseId)
+                              const mappedSections = apiSections.map((apiSection) =>
+                                mapApiSectionToSection(apiSection, subject.code)
+                              )
+                              setSectionsBySubject((prev) => ({ ...prev, [subject.code]: mappedSections }))
+                              
+                              if (mappedSections.length === 0) {
+                                toast.info('Không có lớp học phần nào cho môn học này')
+                              }
+                            } catch (err) {
+                              const errorMessage = err instanceof Error ? err.message : 'Không thể tải nhóm học phần'
+                              toast.error(errorMessage)
+                            } finally {
+                              setLoadingSubject(null)
+                            }
                           }}
                         >
-                          {isLoading ? 'Đang tải...' : 'Xem nhóm học phần'} <ChevronDown className="ml-1 h-3 w-3" />
+                          {loadingSubject === subject.code ? (
+                            <>
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                              Đang tải...
+                            </>
+                          ) : sectionsBySubject[subject.code] ? (
+                            'Ẩn nhóm học phần'
+                          ) : (
+                            <>
+                              Xem nhóm học phần <ChevronDown className="ml-1 h-3 w-3" />
+                            </>
+                          )}
                         </button>
                       </div>
                       {sections.length > 0 && (
                         <div className="mt-2 space-y-2">
-                          {sections.map((sec) => (
-                            <div
-                              key={sec.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, sec)}
-                              className="p-2 rounded border cursor-grab active:cursor-grabbing bg-white"
-                            >
-                              <div className="text-sm font-medium">{sec.classCode}</div>
-                              <div className="text-xs opacity-80">{sec.teacher} • {sec.room}</div>
-                              <div className="text-[11px] mt-1 text-muted-foreground">
-                                {sec.meetings.map(m => `${m.day} tiết ${m.period}-${m.period + m.length - 1}`).join(' • ')}
+                          {sections.map((sec) => {
+                            const sectionIdNum = Number(sec.id)
+                            const isRegistering = registeringSectionIds.has(sectionIdNum)
+                            const isRegistered = Object.values(schedule).some(dayMap => 
+                              Object.values(dayMap || {}).some(cell => cell?.sectionId === sec.id)
+                            )
+                            
+                            return (
+                              <div
+                                key={sec.id}
+                                draggable={!isRegistering && !isRegistered}
+                                onDragStart={(e) => !isRegistering && !isRegistered && handleDragStart(e, sec)}
+                                className={`p-2 rounded border bg-white transition-opacity ${
+                                  isRegistering || isRegistered 
+                                    ? 'opacity-60 cursor-not-allowed' 
+                                    : 'cursor-grab active:cursor-grabbing'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="text-sm font-medium">{sec.classCode}</div>
+                                  {isRegistering && (
+                                    <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                                  )}
+                                  {isRegistered && !isRegistering && (
+                                    <Badge variant="outline" className="text-xs bg-green-100 text-green-800">
+                                      Đã đăng ký
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-base opacity-80 font-medium">{sec.teacher} • {sec.room}</div>
+                                <div className="text-sm mt-1 text-muted-foreground font-medium">
+                                  {sec.meetings.map(m => `${m.day} tiết ${m.period}-${m.period + m.length - 1}`).join(' • ')}
+                                </div>
+                                <div className="text-[11px] text-blue-700 mt-1">
+                                  {isRegistering ? (
+                                    'Đang đăng ký...'
+                                  ) : isRegistered ? (
+                                    'Đã được thêm vào thời khóa biểu'
+                                  ) : sec.meetings.length > 1 ? (
+                                    `Kéo vào ô trống bất kỳ - sẽ đặt vào ${sec.meetings.length} buổi học`
+                                  ) : (
+                                    `Kéo vào ${sec.meetings[0]?.day} tiết ${sec.meetings[0]?.period}`
+                                  )}
+                                </div>
                               </div>
-                              <div className="text-[11px] text-blue-700 mt-1">Kéo học phần vào tiết bắt đầu tương ứng</div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )}
                     </div>
                   )
-                })}
+                  })
+                )}
               </div>
           </CardContent>
         </Card>
@@ -252,19 +648,26 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                       </div>
                       {days.map(day => {
                         const cell = schedule[day]?.[period]
+                        const isDropZone = !cell
                         return (
                           <div
                             key={`${day}-${period}`}
-                            className={`min-h-[60px] p-2 rounded border-2 ${cell ? 'border-solid' : 'border-dashed border-muted-foreground/20 hover:border-primary/30'} transition-all duration-200`}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, day, period)}
+                            className={`min-h-[60px] p-2 rounded border-2 transition-all duration-200 ${
+                              cell
+                                ? 'border-solid'
+                                : 'border-dashed border-muted-foreground/20 hover:border-primary/30 hover:bg-primary/5'
+                            }`}
+                            onDragOver={isDropZone ? handleDragOver : undefined}
+                            onDrop={isDropZone ? (e) => handleDrop(e, day, period) : undefined}
                           >
                             {cell ? (
                               cell.isHead ? (
                                 <div className={`p-2 rounded text-xs ${cell.color}`}>
                                   <div className="font-medium">{cell.subject.code}</div>
-                                  <div className="text-xs opacity-80">{cell.subject.name}</div>
-                                  <div className="text-[10px] opacity-70 mt-1">{`Tiết ${period} - ${period + cell.length - 1}`}</div>
+                                  <div className="text-xs opacity-80 line-clamp-1">{cell.subject.name}</div>
+                                  <div className="text-[10px] opacity-70 mt-1">
+                                    Tiết {period}-{period + cell.length - 1}
+                                  </div>
                                   <Button
                                     size="sm"
                                     variant="destructive"
@@ -275,11 +678,11 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                                   </Button>
                                 </div>
                               ) : (
-                                <div className="text-[10px] text-muted-foreground/60 text-center pt-2">Đã chiếm</div>
+                                <div className="text-[10px] text-muted-foreground/60 text-center pt-2">...</div>
                               )
                             ) : (
                               <div className="text-xs text-muted-foreground/50 text-center pt-2">
-                                Kéo môn học vào đây
+                                {isDropZone ? 'Kéo vào đây' : ''}
                               </div>
                             )}
                           </div>

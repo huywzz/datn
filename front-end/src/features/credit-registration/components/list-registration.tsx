@@ -1,38 +1,25 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { CheckCircle2, Plus, X, Search, Filter, BookOpen } from 'lucide-react'
+import { CheckCircle2, Plus, X, Search, BookOpen, Loader2, AlertCircle, User, MapPin, Clock } from 'lucide-react'
+import { toast } from 'sonner'
+import { getCourseSections, registerSection, type CourseSection } from '@/lib/api'
+import { useAvailableCourses, type Subject } from '../hooks/use-available-courses'
 
-// Mock data for subjects
-const subjects = [
-  { id: '1', code: 'CS101', name: 'Nhập môn lập trình', credits: 3, type: 'Bắt buộc', semester: 'HK1', available: true },
-  { id: '2', code: 'CS102', name: 'Cấu trúc dữ liệu', credits: 3, type: 'Bắt buộc', semester: 'HK1', available: true },
-  { id: '3', code: 'CS103', name: 'Thuật toán', credits: 3, type: 'Bắt buộc', semester: 'HK2', available: true },
-  { id: '4', code: 'CS201', name: 'Cơ sở dữ liệu', credits: 3, type: 'Bắt buộc', semester: 'HK2', available: false },
-  { id: '5', code: 'CS301', name: 'Phát triển web', credits: 4, type: 'Tự chọn', semester: 'HK1', available: true },
-  { id: '6', code: 'CS302', name: 'Trí tuệ nhân tạo', credits: 3, type: 'Tự chọn', semester: 'HK1', available: true },
-]
-
-// Mock data for class sections
-const classSections: Record<string, Array<{ id: string; classCode: string; teacher: string; time: string; room: string; capacity: number; enrolled: number }>> = {
-  'CS101': [
-    { id: '1', classCode: 'CS101-01', teacher: 'Nguyễn Văn A', time: 'T2,T4,T6 7:30-9:00', room: 'A101', capacity: 40, enrolled: 35 },
-    { id: '2', classCode: 'CS101-02', teacher: 'Trần Thị B', time: 'T3,T5 9:30-11:00', room: 'A102', capacity: 40, enrolled: 28 },
-  ],
-  'CS102': [
-    { id: '3', classCode: 'CS102-01', teacher: 'Lê Văn C', time: 'T2,T4 7:30-9:00', room: 'B201', capacity: 35, enrolled: 32 },
-  ],
-  'CS103': [
-    { id: '4', classCode: 'CS103-01', teacher: 'Phạm Thị D', time: 'T3,T5,T6 9:30-11:00', room: 'B202', capacity: 40, enrolled: 25 },
-  ],
-  'CS301': [
-    { id: '5', classCode: 'CS301-01', teacher: 'Hoàng Văn E', time: 'T2,T4 13:30-15:00', room: 'C301', capacity: 30, enrolled: 22 },
-  ],
-  'CS302': [
-    { id: '6', classCode: 'CS302-01', teacher: 'Vũ Thị F', time: 'T3,T5 15:30-17:00', room: 'C302', capacity: 35, enrolled: 18 },
-  ],
+// Map dayOfWeek (0-6) to day format (CN, T2-T7)
+const mapDayOfWeek = (dayOfWeek: string): 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'CN' => {
+  const dayMap: Record<string, 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'CN'> = {
+    '0': 'CN',
+    '1': 'T2',
+    '2': 'T3',
+    '3': 'T4',
+    '4': 'T5',
+    '5': 'T6',
+    '6': 'T7',
+  }
+  return dayMap[dayOfWeek] || 'T2'
 }
 
 interface ListRegistrationProps {
@@ -44,7 +31,14 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
   const [searchTerm, setSearchTerm] = useState('')
   const [semesterFilter, setSemesterFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
-  const [_selectedClassDialog, setSelectedClassDialog] = useState<{ subjectCode: string; classId: string } | null>(null)
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
+  const [sections, setSections] = useState<CourseSection[]>([])
+  const [isLoadingSections, setIsLoadingSections] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [registeringSectionId, setRegisteringSectionId] = useState<number | null>(null)
+
+  // Use shared hook with React Query caching
+  const { subjects, isLoading, error } = useAvailableCourses()
 
   // Filter subjects based on search and filters
   const filteredSubjects = subjects.filter(subject => {
@@ -53,20 +47,63 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
     const matchesSemester = semesterFilter === 'all' || subject.semester === semesterFilter
     const matchesType = typeFilter === 'all' || subject.type === typeFilter
     
-    return matchesSearch && matchesSemester && matchesType && subject.available
+    return matchesSearch && matchesSemester && matchesType && (subject.available !== false)
   })
 
-  const handleRegisterClass = (subjectCode: string, _classId: string) => {
-    if (!registeredSubjects.includes(subjectCode)) {
-      onUpdateRegisteredSubjects([...registeredSubjects, subjectCode])
+  const handleOpenDialog = async (subject: Subject) => {
+    setSelectedSubject(subject)
+    setDialogOpen(true)
+    setIsLoadingSections(true)
+    setSections([])
+    
+    try {
+      const courseSections = await getCourseSections(subject.courseId)
+      setSections(courseSections)
+      
+      if (courseSections.length === 0) {
+        toast.info('Không có lớp học phần nào cho môn học này')
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Không thể tải danh sách lớp học phần'
+      toast.error(errorMessage)
+    } finally {
+      setIsLoadingSections(false)
     }
-    setSelectedClassDialog(null)
-    // Here you would typically call an API to register for the specific class
+  }
+
+  const handleRegisterClass = async (subjectCode: string, sectionId?: number) => {
+    if (!sectionId) {
+      toast.error('Không tìm thấy ID lớp học phần')
+      return
+    }
+
+    if (registeredSubjects.includes(subjectCode)) {
+      toast.info('Môn học này đã được đăng ký')
+      return
+    }
+
+    try {
+      setRegisteringSectionId(sectionId)
+      await registerSection(sectionId)
+      
+      if (!registeredSubjects.includes(subjectCode)) {
+        onUpdateRegisteredSubjects([...registeredSubjects, subjectCode])
+      }
+      toast.success(`Đã đăng ký môn học ${subjectCode}`)
+      setDialogOpen(false)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Đăng ký lớp học phần thất bại'
+      toast.error(errorMessage)
+    } finally {
+      setRegisteringSectionId(null)
+    }
   }
 
   const handleCancelRegistration = (subjectCode: string) => {
     onUpdateRegisteredSubjects(registeredSubjects.filter(code => code !== subjectCode))
-    // Here you would typically call an API to cancel the registration
+    toast.success(`Đã hủy đăng ký môn học ${subjectCode}`)
+    // TODO: Call API to cancel the registration when API is available
+    // Note: This would require a DELETE endpoint like DELETE /registrations/:registrationId
   }
 
   const registeredCredits = registeredSubjects.reduce((total, subjectCode) => {
@@ -91,12 +128,6 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
 
       {/* Filters Section */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Bộ lọc và tìm kiếm
-          </CardTitle>
-        </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
@@ -138,7 +169,42 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
 
       {/* Subjects List */}
       <div className="space-y-4">
-        {filteredSubjects.length === 0 ? (
+        {isLoading ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <div>
+                  <h3 className="text-lg font-semibold">Đang tải danh sách môn học...</h3>
+                  <p className="text-muted-foreground">Vui lòng chờ trong giây lát</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : error ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <div className="flex flex-col items-center gap-4">
+                <div className="p-4 bg-destructive/10 rounded-full">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Lỗi tải dữ liệu</h3>
+                  <p className="text-muted-foreground">
+                    {error instanceof Error ? error.message : 'Không thể tải danh sách môn học'}
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => window.location.reload()}
+                  >
+                    Tải lại
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : filteredSubjects.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <div className="flex flex-col items-center gap-4">
@@ -200,46 +266,119 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
                           </Button>
                         </>
                       ) : (
-                        <Dialog>
+                        <Dialog open={dialogOpen && selectedSubject?.code === subject.code} onOpenChange={setDialogOpen}>
                           <DialogTrigger asChild>
-                            <Button size="sm" className="flex items-center gap-1">
+                            <Button 
+                              size="sm" 
+                              className="flex items-center gap-1"
+                              onClick={() => handleOpenDialog(subject)}
+                            >
                               <Plus className="h-4 w-4" />
                               Đăng ký
                             </Button>
                           </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
+                          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                             <DialogHeader>
-                              <DialogTitle>Chọn lớp cho {subject.name}</DialogTitle>
+                              <DialogTitle>Chọn lớp học phần cho {subject.name}</DialogTitle>
                               <DialogDescription>
-                                Chọn lớp phù hợp với thời gian biểu của bạn
+                                Chọn lớp học phần phù hợp với thời khóa biểu của bạn
                               </DialogDescription>
                             </DialogHeader>
-                            <div className="space-y-3 max-h-96 overflow-y-auto">
-                              {classSections[subject.code]?.map((section) => (
-                                <div key={section.id} className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors">
-                                  <div className="flex-1">
-                                    <div className="font-medium text-sm">{section.classCode}</div>
-                                    <div className="text-sm text-muted-foreground mt-1">
-                                      <div>👨‍🏫 {section.teacher}</div>
-                                      <div>🕒 {section.time}</div>
-                                      <div>📍 {section.room}</div>
+                            {isLoadingSections ? (
+                              <div className="flex flex-col items-center justify-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                                <p className="text-muted-foreground">Đang tải danh sách lớp học phần...</p>
+                              </div>
+                            ) : sections.length === 0 ? (
+                              <div className="flex flex-col items-center justify-center py-12">
+                                <BookOpen className="h-8 w-8 text-muted-foreground mb-4" />
+                                <p className="text-muted-foreground">Không có lớp học phần nào</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {sections.map((section) => (
+                                  <div
+                                    key={section.sectionId}
+                                    className="flex items-center justify-between border rounded-lg p-4 hover:bg-muted/50 transition-colors"
+                                  >
+                                    <div className="flex-1">
+                                      <div className="font-medium text-sm">
+                                        {section.sectionCode || `Lớp ${section.sectionId}`}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                                        {section.instructor?.fullName && (
+                                          <div className="flex items-center gap-2">
+                                            <User className="h-3 w-3" />
+                                            <span>{section.instructor.fullName}</span>
+                                            {section.instructor.title && (
+                                              <span className="text-xs">({section.instructor.title})</span>
+                                            )}
+                                          </div>
+                                        )}
+                                        {section.classSchedules && section.classSchedules.length > 0 && (
+                                          <>
+                                            {section.classSchedules.map((schedule, idx) => (
+                                              <div key={schedule.scheduleId || idx} className="flex items-center gap-2">
+                                                <Clock className="h-3 w-3" />
+                                                <span>
+                                                  {mapDayOfWeek(schedule.dayOfWeek)} tiết {schedule.startPeriod}-{schedule.endPeriod}
+                                                </span>
+                                                {schedule.room && (
+                                                  <>
+                                                    <span className="mx-1">•</span>
+                                                    <MapPin className="h-3 w-3" />
+                                                    <span>{schedule.room}</span>
+                                                  </>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </>
+                                        )}
+                                        {section.schedule && (
+                                          <div className="flex items-center gap-2 text-xs text-muted-foreground/80">
+                                            <span>{section.schedule}</span>
+                                          </div>
+                                        )}
+                                        {section.maxStudents !== undefined && (
+                                          <div className="flex items-center gap-2 mt-1">
+                                            <Badge variant="outline" className="text-xs">
+                                              Sức chứa: {section.maxStudents}
+                                            </Badge>
+                                            {section.status && (
+                                              <Badge 
+                                                variant={section.status === 'open' ? 'default' : 'secondary'} 
+                                                className="text-xs"
+                                              >
+                                                {section.status === 'open' ? 'Mở đăng ký' : section.status}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3 ml-4">
+                                      <Button
+                                        size="sm"
+                                        onClick={() => handleRegisterClass(subject.code, section.sectionId)}
+                                        className="min-w-[80px]"
+                                        disabled={section.status !== 'open' || registeringSectionId === section.sectionId || registeredSubjects.includes(subject.code)}
+                                      >
+                                        {registeringSectionId === section.sectionId ? (
+                                          <>
+                                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                            Đang đăng ký...
+                                          </>
+                                        ) : registeredSubjects.includes(subject.code) ? (
+                                          'Đã đăng ký'
+                                        ) : (
+                                          'Chọn'
+                                        )}
+                                      </Button>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-3">
-                                    <Badge variant="outline" className="text-xs">
-                                      {section.enrolled}/{section.capacity}
-                                    </Badge>
-                                    <Button 
-                                      size="sm" 
-                                      onClick={() => handleRegisterClass(subject.code, section.id)}
-                                      className="min-w-[80px]"
-                                    >
-                                      Chọn
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                                ))}
+                              </div>
+                            )}
                           </DialogContent>
                         </Dialog>
                       )}

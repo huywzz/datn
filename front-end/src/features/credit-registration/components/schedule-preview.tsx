@@ -1,43 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, MapPin, User, X } from 'lucide-react'
+import { getMySchedule } from '@/lib/api'
+import type { MyScheduleData, MyScheduleItem } from '@/lib/interface'
 
-// Mock data for schedule
-const scheduleData = {
-  'T2': [
-    { id: '1', subject: 'CS101', name: 'Nhập môn lập trình', teacher: 'Nguyễn Văn A', room: 'A101', time: '7:30-9:00', color: 'bg-blue-100 text-blue-800' },
-    { id: '2', subject: 'CS301', name: 'Phát triển web', teacher: 'Hoàng Văn E', room: 'C301', time: '13:30-15:00', color: 'bg-green-100 text-green-800' }
-  ],
-  'T3': [
-    { id: '3', subject: 'CS102', name: 'Cấu trúc dữ liệu', teacher: 'Trần Thị B', room: 'A102', time: '9:30-11:00', color: 'bg-purple-100 text-purple-800' },
-    { id: '4', subject: 'CS302', name: 'Trí tuệ nhân tạo', teacher: 'Vũ Thị F', room: 'C302', time: '15:30-17:00', color: 'bg-orange-100 text-orange-800' }
-  ],
-  'T4': [
-    { id: '5', subject: 'CS101', name: 'Nhập môn lập trình', teacher: 'Nguyễn Văn A', room: 'A101', time: '7:30-9:00', color: 'bg-blue-100 text-blue-800' },
-    { id: '6', subject: 'CS301', name: 'Phát triển web', teacher: 'Hoàng Văn E', room: 'C301', time: '13:30-15:00', color: 'bg-green-100 text-green-800' }
-  ],
-  'T5': [
-    { id: '7', subject: 'CS102', name: 'Cấu trúc dữ liệu', teacher: 'Trần Thị B', room: 'A102', time: '9:30-11:00', color: 'bg-purple-100 text-purple-800' },
-    { id: '8', subject: 'CS302', name: 'Trí tuệ nhân tạo', teacher: 'Vũ Thị F', room: 'C302', time: '15:30-17:00', color: 'bg-orange-100 text-orange-800' }
-  ],
-  'T6': [
-    { id: '9', subject: 'CS101', name: 'Nhập môn lập trình', teacher: 'Nguyễn Văn A', room: 'A101', time: '7:30-9:00', color: 'bg-blue-100 text-blue-800' },
-    { id: '10', subject: 'CS103', name: 'Thuật toán', teacher: 'Phạm Thị D', room: 'B202', time: '9:30-11:00', color: 'bg-red-100 text-red-800' }
-  ],
-  'T7': [],
-  'CN': []
-}
-
-const timeSlots = [
-  '7:30-9:00',
-  '9:30-11:00', 
-  '11:30-13:00',
-  '13:30-15:00',
-  '15:30-17:00',
-  '17:30-19:00'
-]
+const timeSlots = Array.from({ length: 10 }).map((_, i) => i + 1) // 1..10 periods
 
 const days = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
 
@@ -48,9 +17,37 @@ interface SchedulePreviewProps {
 
 export function SchedulePreview({ registeredSubjects, onRemoveSubject }: SchedulePreviewProps) {
   const [hoveredSlot, setHoveredSlot] = useState<string | null>(null)
+  const [data, setData] = useState<MyScheduleData | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
 
-  const getSubjectInSlot = (day: string, timeSlot: string) => {
-    return scheduleData[day as keyof typeof scheduleData]?.find(subject => subject.time === timeSlot)
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        setLoading(true)
+        const res = await getMySchedule()
+        if (!mounted) return
+        setData(res)
+      } catch (e) {
+        if (!mounted) return
+        setError((e as Error).message || 'Không thể tải thời khóa biểu.')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const schedules: MyScheduleItem[] = useMemo(() => data?.schedules ?? [], [data])
+
+  const getScheduleAt = (day: string, period: number) => {
+    const dayIndex = day === 'CN' ? 0 : days.indexOf(day) + 1 // API uses 0..6
+    return schedules.find(
+      (s) => Number(s.dayOfWeek) === dayIndex && period >= s.startPeriod && period <= s.endPeriod
+    )
   }
 
   const isSubjectRegistered = (subjectCode: string) => {
@@ -66,11 +63,17 @@ export function SchedulePreview({ registeredSubjects, onRemoveSubject }: Schedul
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {loading && (
+          <div className="p-4 text-center text-muted-foreground">Đang tải thời khóa biểu...</div>
+        )}
+        {error && !loading && (
+          <div className="p-4 text-center text-red-600">{error}</div>
+        )}
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
             {/* Header with days */}
             <div className="grid grid-cols-8 gap-2 mb-4">
-              <div className="p-2 text-center font-medium text-sm text-muted-foreground">Giờ</div>
+              <div className="p-2 text-center font-medium text-sm text-muted-foreground">Tiết</div>
               {days.map(day => (
                 <div key={day} className="p-2 text-center font-medium text-sm bg-muted/50 rounded">
                   {day}
@@ -79,42 +82,43 @@ export function SchedulePreview({ registeredSubjects, onRemoveSubject }: Schedul
             </div>
 
             {/* Time slots */}
-            {timeSlots.map(timeSlot => (
-              <div key={timeSlot} className="grid grid-cols-8 gap-2 mb-2">
+            {timeSlots.map(slot => (
+              <div key={slot} className="grid grid-cols-8 gap-2 mb-2">
                 <div className="p-2 text-center text-sm text-muted-foreground bg-muted/30 rounded">
-                  {timeSlot}
+                  Tiết {slot}
                 </div>
                 {days.map(day => {
-                  const subject = getSubjectInSlot(day, timeSlot)
-                  const isRegistered = subject ? isSubjectRegistered(subject.subject) : false
+                  const schedule = getScheduleAt(day, slot)
+                  const subjectCode = schedule?.section.courseCode
+                  const isRegistered = subjectCode ? isSubjectRegistered(subjectCode) : false
                   
                   return (
                     <div
-                      key={`${day}-${timeSlot}`}
+                      key={`${day}-${slot}`}
                       className={`min-h-[60px] p-2 rounded border-2 border-dashed border-muted-foreground/20 transition-all duration-200 ${
-                        hoveredSlot === `${day}-${timeSlot}` ? 'border-primary/50 bg-primary/5' : ''
-                      } ${subject ? 'border-solid' : ''}`}
-                      onMouseEnter={() => setHoveredSlot(`${day}-${timeSlot}`)}
+                        hoveredSlot === `${day}-${slot}` ? 'border-primary/50 bg-primary/5' : ''
+                      } ${schedule ? 'border-solid' : ''}`}
+                      onMouseEnter={() => setHoveredSlot(`${day}-${slot}`)}
                       onMouseLeave={() => setHoveredSlot(null)}
                     >
-                      {subject && (
-                        <div className={`p-2 rounded text-xs ${subject.color} ${!isRegistered ? 'opacity-50' : ''}`}>
-                          <div className="font-medium">{subject.subject}</div>
-                          <div className="text-xs opacity-80">{subject.name}</div>
+                      {schedule && (
+                        <div className={`p-2 rounded text-xs bg-blue-100 text-blue-800 ${!isRegistered ? 'opacity-50' : ''}`}>
+                          <div className="font-medium">{subjectCode}</div>
+                          <div className="text-xs opacity-80">{schedule.section.courseName}</div>
                           <div className="flex items-center gap-1 mt-1">
                             <User className="h-3 w-3" />
-                            <span className="text-xs">{subject.teacher}</span>
+                            <span className="text-xs">GV: {schedule.section.instructorId}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
-                            <span className="text-xs">{subject.room}</span>
+                            <span className="text-xs">{schedule.room}</span>
                           </div>
                           {isRegistered && (
                             <Button
                               size="sm"
                               variant="destructive"
                               className="w-full mt-2 h-6 text-xs"
-                              onClick={() => onRemoveSubject(subject.subject)}
+                              onClick={() => subjectCode && onRemoveSubject(subjectCode)}
                             >
                               <X className="h-3 w-3 mr-1" />
                               Hủy
@@ -134,21 +138,11 @@ export function SchedulePreview({ registeredSubjects, onRemoveSubject }: Schedul
         <div className="mt-6 p-4 bg-muted/30 rounded-lg">
           <h4 className="font-medium mb-2">Chú thích:</h4>
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline" className="bg-blue-100 text-blue-800">
-              CS101 - Nhập môn lập trình
-            </Badge>
-            <Badge variant="outline" className="bg-purple-100 text-purple-800">
-              CS102 - Cấu trúc dữ liệu
-            </Badge>
-            <Badge variant="outline" className="bg-green-100 text-green-800">
-              CS301 - Phát triển web
-            </Badge>
-            <Badge variant="outline" className="bg-orange-100 text-orange-800">
-              CS302 - Trí tuệ nhân tạo
-            </Badge>
-            <Badge variant="outline" className="bg-red-100 text-red-800">
-              CS103 - Thuật toán
-            </Badge>
+            {Array.from(new Set((data?.schedules ?? []).map(s => `${s.section.courseCode} - ${s.section.courseName}`))).map((label) => (
+              <Badge key={label} variant="outline" className="bg-blue-100 text-blue-800">
+                {label}
+              </Badge>
+            ))}
           </div>
         </div>
       </CardContent>
