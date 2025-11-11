@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { AuthLayout } from '../auth-layout'
+import { GoogleLoginButton } from './components/google-login-button'
 import { UserAuthForm } from './components/user-auth-form'
 
 export function SignIn() {
@@ -15,32 +16,44 @@ export function SignIn() {
 
   return (
     <AuthLayout>
-      <Card className='gap-4'>
+      <Card className='w-full max-w-md gap-4 shadow-lg'>
         <CardHeader>
-          <CardTitle className='text-lg tracking-tight'>Sign in</CardTitle>
+          <CardTitle className='text-2xl font-semibold tracking-tight'>
+            Chào mừng trở lại
+          </CardTitle>
           <CardDescription>
-            Enter your email and password below to <br />
-            log into your account
+            Đăng nhập bằng email & mật khẩu hoặc tiếp tục với Google.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className='space-y-6'>
           <UserAuthForm redirectTo={redirect} />
+          <div className='relative'>
+            <div className='absolute inset-0 flex items-center'>
+              <span className='w-full border-t border-dashed' />
+            </div>
+            <div className='relative flex justify-center text-xs uppercase'>
+              <span className='bg-background text-muted-foreground px-3 font-medium'>
+                Hoặc
+              </span>
+            </div>
+          </div>
+          <GoogleLoginButton redirectTo={redirect} />
         </CardContent>
         <CardFooter>
-          <p className='text-muted-foreground px-8 text-center text-sm'>
-            By clicking sign in, you agree to our{' '}
+          <p className='text-muted-foreground w-full px-8 text-center text-sm'>
+            Bằng cách đăng nhập, bạn đồng ý với{' '}
             <a
               href='/terms'
               className='hover:text-primary underline underline-offset-4'
             >
-              Terms of Service
+              Điều khoản dịch vụ
             </a>{' '}
-            and{' '}
+            và{' '}
             <a
               href='/privacy'
               className='hover:text-primary underline underline-offset-4'
             >
-              Privacy Policy
+              Chính sách bảo mật
             </a>
             .
           </p>

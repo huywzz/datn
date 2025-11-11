@@ -19,22 +19,27 @@ const filePath = path.join(dir, `${timestamp}-seed-${name}.ts`);
 
 fs.ensureDirSync(dir);
 
-const className =
-  name
+// Generate class name: Seed{Name}{Timestamp}
+const nameParts = name
     .split(/[-_]/)
     .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-    .join('') + 'Seed';
+  .join('');
+const className = `Seed${nameParts}${timestamp}`;
+const migrationName = className;
 
-const content = `import { DataSource } from 'typeorm';
+const content = `import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class ${className} {
-  public async up(dataSource: DataSource): Promise<void> {
+export class ${className} implements MigrationInterface {
+    name = '${migrationName}'
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
     // TODO: Insert seed data here
   }
 
-  public async down(dataSource: DataSource): Promise<void> {
+    public async down(queryRunner: QueryRunner): Promise<void> {
     // TODO: Revert seed data here
   }
+
 }
 `;
 

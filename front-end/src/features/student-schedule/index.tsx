@@ -1,73 +1,21 @@
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { useEffect, useMemo, useState } from 'react'
+import { getMySchedule } from '@/lib/api'
+import type { MyScheduleData } from '@/lib/interface'
 
-type ClassSchedule = {
+type UiScheduleItem = {
   id: string
   subjectCode: string
   subjectName: string
-  credits: number
-  type: 'Bắt buộc' | 'Tự chọn'
-  day: number // 1-7 (Thứ 2 = 1, Chủ nhật = 7)
-  startSlot: number // 1-10
-  endSlot: number // 1-10
+  day: number
+  startSlot: number
+  endSlot: number
   room: string
-  lecturer: string
 }
-
-const registeredClasses: ClassSchedule[] = [
-  {
-    id: 'CLC101-1',
-    subjectCode: 'CLC101',
-    subjectName: 'Cơ sở lập trình',
-    credits: 3,
-    type: 'Bắt buộc',
-    day: 1, // Thứ 2
-    startSlot: 1,
-    endSlot: 3,
-    room: 'A1-201',
-    lecturer: 'Nguyễn Văn A',
-  },
-  {
-    id: 'THCS201-2',
-    subjectCode: 'THCS201',
-    subjectName: 'Cấu trúc dữ liệu',
-    credits: 3,
-    type: 'Bắt buộc',
-    day: 3, // Thứ 4
-    startSlot: 6,
-    endSlot: 8,
-    room: 'A2-305',
-    lecturer: 'Trần Thị B',
-  },
-  {
-    id: 'WEB301-1',
-    subjectCode: 'WEB301',
-    subjectName: 'Lập trình Web',
-    credits: 3,
-    type: 'Tự chọn',
-    day: 5, // Thứ 6
-    startSlot: 1,
-    endSlot: 2,
-    room: 'LAB-404',
-    lecturer: 'Lê Văn C',
-  },
-  {
-    id: 'TEST-1',
-    subjectCode: 'TEST',
-    subjectName: 'Lớp 1 tiết',
-    credits: 1,
-    type: 'Tự chọn',
-    day: 2, // Thứ 3
-    startSlot: 3,
-    endSlot: 3,
-    room: 'A1-101',
-    lecturer: 'Test GV',
-  },
-]
 
 const timeSlots = [
   { slot: 1, time: '07h30', period: 'Sáng' },
@@ -93,6 +41,42 @@ const daysOfWeek = [
 ]
 
 export function StudentSchedule() {
+  const [data, setData] = useState<MyScheduleData | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      try {
+        setLoading(true)
+        const res = await getMySchedule()
+        if (!mounted) return
+        setData(res)
+      } catch (e) {
+        if (!mounted) return
+        setError((e as Error).message || 'Không thể tải thời khóa biểu.')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const registeredClasses: UiScheduleItem[] = useMemo(() => {
+    if (!data?.schedules) return []
+    return data.schedules.map((s) => ({
+      id: String(s.scheduleId),
+      subjectCode: s.section.courseCode,
+      subjectName: s.section.courseName,
+      day: s.dayOfWeek === '0' ? 7 : Number(s.dayOfWeek), // API: "0"=CN, "1"=T2 ... "6"=T7; UI uses 1..7 with 7=CN
+      startSlot: s.startPeriod,
+      endSlot: s.endPeriod,
+      room: s.room,
+    }))
+  }, [data])
 
   const getClassAtSlot = (day: number, slot: number) => {
     return registeredClasses.find(
@@ -112,8 +96,10 @@ export function StudentSchedule() {
       <Main fixed className='overflow-y-auto'>
         <div className='flex flex-col gap-6 p-6'>
           <div>
-            <h1 className='text-2xl font-bold tracking-tight'>Thời khóa biểu tạm thời</h1>
-            <p className='text-muted-foreground'>Xem thời khóa biểu các lớp bạn đã đăng ký.</p>
+            <h1 className='text-2xl font-bold tracking-tight'>Thời khóa biểu</h1>
+            <p className='text-muted-foreground'>
+              {data?.fullName ? `Sinh viên: ${data.fullName} (${data.studentCode})` : 'Xem thời khóa biểu các lớp bạn đã đăng ký.'}
+            </p>
           </div>
 
           {/* Schedule Preview */}
@@ -122,6 +108,12 @@ export function StudentSchedule() {
               <h2 className='text-lg font-semibold'>THỜI KHÓA BIỂU TUẦN</h2>
             </CardHeader>
             <CardContent>
+              {loading && (
+                <div className='p-6 text-center text-muted-foreground'>Đang tải thời khóa biểu...</div>
+              )}
+              {error && !loading && (
+                <div className='p-6 text-center text-red-600'>{error}</div>
+              )}
               {/* Schedule Table */}
               <div className='overflow-x-auto'>
                 <table className='w-full border-collapse border border-gray-300'>

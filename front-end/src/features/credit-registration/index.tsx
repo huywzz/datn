@@ -11,7 +11,7 @@ import { useNavigate, useRouterState } from '@tanstack/react-router'
 
 
 export function CreditRegistration() {
-  const [registeredSubjects, setRegisteredSubjects] = useState<string[]>(['CS101', 'CS102'])
+  const [registeredSubjects, setRegisteredSubjects] = useState<string[]>([])
   const location = useRouterState({ select: (s) => s.location })
   const navigate = useNavigate()
   const activeTab = location.pathname.endsWith('/credit-registration-schedule') ? 'schedule' : 'list'
