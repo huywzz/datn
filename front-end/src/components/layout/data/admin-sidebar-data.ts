@@ -22,16 +22,6 @@ export const adminSidebarData: SidebarData = {
     ],
     navGroups: [
         {
-            title: 'General',
-            items: [
-                {
-                    title: 'Dashboard',
-                    url: '/admin',
-                    icon: LayoutDashboard,
-                },
-            ],
-        },
-        {
             title: 'Quản lý',
             items: [
                 {

@@ -183,6 +183,19 @@ export interface CreateCohortRegistrationScheduleDto {
   endTime: string;
 }
 
+export interface CourseRegistrationPeriod {
+  id: number;
+  startTime: string;
+  endTime: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCourseRegistrationPeriodDto {
+  startTime: string;
+  endTime: string;
+}
+
 export interface ImportResponse {
   success: number;
   errors: string[];

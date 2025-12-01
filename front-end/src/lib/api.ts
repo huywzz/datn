@@ -287,6 +287,28 @@ export async function registerSection(
   }
 }
 
+export async function createCourseRegistrationPeriod(
+  data: import('./interface').CreateCourseRegistrationPeriodDto
+): Promise<import('./interface').CourseRegistrationPeriod> {
+  try {
+    const response = await api.post<import('./interface').CourseRegistrationPeriod>(
+      '/course-registration-periods',
+      data
+    )
+    return response.data
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Tạo đợt đăng ký tín chỉ thất bại'
+      )
+    }
+    throw error
+  }
+}
+
 export async function deleteRegistration(registrationId: number): Promise<void> {
   try {
     await api.delete(`/registrations/${registrationId}`)

@@ -20,6 +20,7 @@ export class CourseRegistrationPeriodService {
 
     const startDate = start instanceof Date ? start : new Date(start);
     const endDate = end instanceof Date ? end : new Date(end);
+    const now = new Date();
 
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       throw new ConflictException('Registration period times must be valid ISO strings');
@@ -27,6 +28,11 @@ export class CourseRegistrationPeriodService {
 
     if (endDate <= startDate) {
       throw new ConflictException('Registration end time must be after start time');
+    }
+
+    // Chỉ cho phép chọn khoảng thời gian ở tương lai
+    if (startDate <= now || endDate <= now) {
+      throw new ConflictException('Registration period must be in the future');
     }
   }
 
