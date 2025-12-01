@@ -1,5 +1,4 @@
 import {
-  LayoutDashboard,
   AudioWaveform,
   Command,
   GalleryVerticalEnd,
@@ -53,14 +52,8 @@ export const sidebarData: SidebarData = {
   ],
   navGroups: [
     {
-      title: 'General',
+      title: 'Đăng ký',
       items: [
-        {
-          title: 'Dashboard',
-          url: '/',
-          icon: LayoutDashboard,
-        },
-       
         {
           title: 'Đăng ký tín chỉ',
           icon: BookOpen,

@@ -28,7 +28,7 @@ export const commonSidebarData: SidebarData = {
       title: 'Trang chủ',
       items: [
         {
-          title: 'Dashboard',
+          title: 'Chào mừng',
           url: '/',
           icon: LayoutDashboard,
         },

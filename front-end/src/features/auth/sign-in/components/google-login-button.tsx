@@ -152,8 +152,13 @@ export function GoogleLoginButton({ redirectTo }: GoogleLoginButtonProps) {
 
         toast.success('Đăng nhập thành công!')
 
-        // Redirect to the stored location or default to dashboard
-        const targetPath = redirectTo || '/'
+        const latestUser = useAuthStore.getState().auth.user
+        const isAdmin =
+          Array.isArray(latestUser?.role) &&
+          latestUser?.role.some((r) => r.toLowerCase() === 'admin')
+
+        // Admin -> trang quản lý đợt đăng ký, Student -> trang chào mừng
+        const targetPath = isAdmin ? '/admin/cohort-schedule' : '/'
         navigate({ to: targetPath, replace: true })
       } catch (error) {
         // eslint-disable-next-line no-console
