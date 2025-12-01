@@ -1,10 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar, Plus, GripVertical, ChevronDown, Loader2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { getCourseSections, registerSection, type CourseSection as ApiCourseSection, getMySchedule } from '@/lib/api'
+import {
+  getCourseSections,
+  registerSection,
+  type CourseSection as ApiCourseSection,
+  getMySchedule,
+  deleteRegistration,
+} from '@/lib/api'
 import type { MyScheduleItem } from '@/lib/interface'
 import { useAvailableCourses, type Subject } from '../hooks/use-available-courses'
 
@@ -105,80 +111,76 @@ interface DragDropRegistrationProps {
 }
 
 export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSubjects }: DragDropRegistrationProps) {
-  type ScheduledCell = { 
+  type ScheduledCell = {
     subject: Subject
     sectionId: string // Add sectionId to track which section this cell belongs to
     color: string
     isHead: boolean
     length: number
+    registrationId?: number
   } | null
   const [schedule, setSchedule] = useState<Record<string, Record<number, ScheduledCell>>>({})
   const [draggedSection, setDraggedSection] = useState<Section | null>(null)
   const [sectionsBySubject, setSectionsBySubject] = useState<Record<string, Section[]>>({})
   const [loadingSubject, setLoadingSubject] = useState<string | null>(null)
   const [registeringSectionIds, setRegisteringSectionIds] = useState<Set<number>>(new Set())
+  const [removingRegistrationIds, setRemovingRegistrationIds] = useState<Set<number>>(new Set())
+  const [hasSyncedInitialSchedule, setHasSyncedInitialSchedule] = useState(false)
 
   // Use shared hook with React Query caching
   const { subjects, isLoading, error } = useAvailableCourses()
 
+  const syncScheduleFromServer = useCallback(async () => {
+    if (!subjects || subjects.length === 0) return
+    try {
+      const mySchedule = await getMySchedule()
+      const apiSchedules: MyScheduleItem[] = mySchedule?.schedules ?? []
+      const newSchedule: typeof schedule = {}
+      const newRegisteredSubjects = new Set<string>()
+
+      for (const s of apiSchedules) {
+        const day = mapDayOfWeek(s.dayOfWeek)
+        const start = s.startPeriod
+        const end = s.endPeriod
+        const length = end - start + 1
+        const subjectCode = s.section.courseCode
+
+        const subjectInfo = subjects.find((sub) => sub.code === subjectCode)
+        if (!subjectInfo) continue
+
+        const dayMap: Record<number, ScheduledCell> = { ...(newSchedule[day] ?? {}) }
+        for (let p = start; p <= end; p++) {
+          dayMap[p] = {
+            subject: subjectInfo,
+            sectionId: String(s.section.sectionId),
+            color: getSubjectColor(subjectCode),
+            isHead: p === start,
+            length: p === start ? length : 0,
+            registrationId: s.registrationId,
+          }
+        }
+        newSchedule[day] = dayMap
+        newRegisteredSubjects.add(subjectCode)
+      }
+
+      setSchedule(newSchedule)
+      onUpdateRegisteredSubjects(Array.from(newRegisteredSubjects))
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(err)
+      toast.error('Không thể đồng bộ thời khóa biểu')
+    }
+  }, [subjects, onUpdateRegisteredSubjects])
+
   // Hydrate current timetable from API on mount (after subjects are loaded)
-  const [isHydratedFromApi, setIsHydratedFromApi] = useState(false)
   useEffect(() => {
-    if (isHydratedFromApi) return
+    if (hasSyncedInitialSchedule) return
     if (!subjects || subjects.length === 0) return
     ;(async () => {
-      try {
-        const mySchedule = await getMySchedule()
-        const apiSchedules: MyScheduleItem[] = mySchedule?.schedules ?? []
-        if (apiSchedules.length === 0) {
-          setIsHydratedFromApi(true)
-          return
-        }
-
-        const newSchedule: typeof schedule = {}
-        const newRegisteredSubjects = new Set<string>(registeredSubjects)
-
-        for (const s of apiSchedules) {
-          const day = mapDayOfWeek(s.dayOfWeek)
-          const start = s.startPeriod
-          const end = s.endPeriod
-          const length = end - start + 1
-          const subjectCode = s.section.courseCode
-
-          const subjectInfo = subjects.find((sub) => sub.code === subjectCode)
-          if (!subjectInfo) {
-            // Skip if we don't know this subject from available list
-            continue
-          }
-
-          const dayMap: Record<number, ScheduledCell> = { ...(newSchedule[day] ?? {}) }
-          for (let p = start; p <= end; p++) {
-            dayMap[p] = {
-              subject: subjectInfo,
-              sectionId: String(s.section.sectionId),
-              color: getSubjectColor(subjectCode),
-              isHead: p === start,
-              length: p === start ? length : 0,
-            }
-          }
-          newSchedule[day] = dayMap
-          newRegisteredSubjects.add(subjectCode)
-        }
-
-        if (Object.keys(newSchedule).length > 0) {
-          setSchedule(newSchedule)
-        }
-        if (newRegisteredSubjects.size !== registeredSubjects.length) {
-          onUpdateRegisteredSubjects(Array.from(newRegisteredSubjects))
-        }
-      } catch (_e) {
-        // Non-blocking: ignore failures here
-      } finally {
-        setIsHydratedFromApi(true)
-      }
+      await syncScheduleFromServer()
+      setHasSyncedInitialSchedule(true)
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subjects, isHydratedFromApi])
+  }, [subjects, hasSyncedInitialSchedule, syncScheduleFromServer])
 
   const handleDragStart = (e: React.DragEvent, section: Section) => {
     setDraggedSection(section)
@@ -312,6 +314,8 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
       } else {
         toast.success(`Đã đăng ký ${subjectInfo.name} vào thời khóa biểu: ${placedMeetings[0]}`)
       }
+
+      await syncScheduleFromServer()
     } catch (error) {
       // Revert optimistic update on error
       setSchedule(schedule)
@@ -332,13 +336,33 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     setDraggedSection(null)
   }
 
-  const removeFromSchedule = (day: string, period: number) => {
+  const removeFromSchedule = async (day: string, period: number) => {
     const cell = schedule[day]?.[period]
     if (!cell) return
 
     // Get the sectionId from the cell
     const sectionIdToRemove = cell.sectionId
     const subjectCodeToRemove = cell.subject.code
+    const registrationId = cell.registrationId
+
+    if (registrationId) {
+      setRemovingRegistrationIds((prev) => new Set(prev).add(registrationId))
+      try {
+        await deleteRegistration(registrationId)
+        toast.success(`Đã xóa ${cell.subject.name} khỏi thời khóa biểu`)
+        await syncScheduleFromServer()
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Không thể xóa lớp học phần'
+        toast.error(errorMessage)
+      } finally {
+        setRemovingRegistrationIds((prev) => {
+          const next = new Set(prev)
+          next.delete(registrationId)
+          return next
+        })
+      }
+      return
+    }
 
     if (!sectionIdToRemove) {
       // Fallback: remove only this day's meeting if sectionId is not available
@@ -529,7 +553,8 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                             
                             setLoadingSubject(subject.code)
                             try {
-                              const apiSections = await getCourseSections(subject.courseId)
+                              const apiSectionsData = await getCourseSections(subject.courseId)
+                              const apiSections = apiSectionsData.data || []
                               const mappedSections = apiSections.map((apiSection) =>
                                 mapApiSectionToSection(apiSection, subject.code)
                               )
@@ -673,8 +698,15 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                                     variant="destructive"
                                     className="w-full mt-1 h-5 text-xs"
                                     onClick={() => removeFromSchedule(day, period)}
+                                    disabled={
+                                      !!cell.registrationId && removingRegistrationIds.has(cell.registrationId)
+                                    }
                                   >
-                                    Xóa
+                                    {cell.registrationId && removingRegistrationIds.has(cell.registrationId) ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      'Xóa'
+                                    )}
                                   </Button>
                                 </div>
                               ) : (

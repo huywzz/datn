@@ -41,8 +41,10 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
+import { Route as AuthenticatedCoursesIndexRouteImport } from './routes/_authenticated/courses/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as ClerkAuthenticatedUserManagementRouteImport } from './routes/clerk/_authenticated/user-management'
 import { Route as ClerkauthSignUpRouteImport } from './routes/clerk/(auth)/sign-up'
 import { Route as ClerkauthSignInRouteImport } from './routes/clerk/(auth)/sign-in'
@@ -51,6 +53,10 @@ import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedCoursesCourseIdRouteImport } from './routes/_authenticated/courses/$courseId'
+import { Route as AuthenticatedAdminImportRouteImport } from './routes/_authenticated/admin/import'
+import { Route as AuthenticatedAdminCohortScheduleRouteImport } from './routes/_authenticated/admin/cohort-schedule'
+import { Route as AuthenticatedAdminSectionsSectionIdStudentsRouteImport } from './routes/_authenticated/admin/sections/$sectionId/students'
 
 const CommonRoute = CommonRouteImport.update({
   id: '/_common',
@@ -216,6 +222,12 @@ const AuthenticatedHelpCenterIndexRoute =
     path: '/help-center/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCoursesIndexRoute =
+  AuthenticatedCoursesIndexRouteImport.update({
+    id: '/courses/',
+    path: '/courses/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
   id: '/chats/',
   path: '/chats/',
@@ -224,6 +236,11 @@ const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
 const AuthenticatedAppsIndexRoute = AuthenticatedAppsIndexRouteImport.update({
   id: '/apps/',
   path: '/apps/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ClerkAuthenticatedUserManagementRoute =
@@ -272,6 +289,30 @@ const AuthenticatedErrorsErrorRoute =
     path: '/errors/$error',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedCoursesCourseIdRoute =
+  AuthenticatedCoursesCourseIdRouteImport.update({
+    id: '/courses/$courseId',
+    path: '/courses/$courseId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminImportRoute =
+  AuthenticatedAdminImportRouteImport.update({
+    id: '/admin/import',
+    path: '/admin/import',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminCohortScheduleRoute =
+  AuthenticatedAdminCohortScheduleRouteImport.update({
+    id: '/admin/cohort-schedule',
+    path: '/admin/cohort-schedule',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminSectionsSectionIdStudentsRoute =
+  AuthenticatedAdminSectionsSectionIdStudentsRouteImport.update({
+    id: '/admin/sections/$sectionId/students',
+    path: '/admin/sections/$sectionId/students',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/clerk': typeof ClerkAuthenticatedRouteRouteWithChildren
@@ -298,6 +339,9 @@ export interface FileRoutesByFullPath {
   '/students': typeof CommonStudentsRoute
   '/subjects': typeof CommonSubjectsRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/cohort-schedule': typeof AuthenticatedAdminCohortScheduleRoute
+  '/admin/import': typeof AuthenticatedAdminImportRoute
+  '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
@@ -306,12 +350,15 @@ export interface FileRoutesByFullPath {
   '/clerk/sign-in': typeof ClerkauthSignInRoute
   '/clerk/sign-up': typeof ClerkauthSignUpRoute
   '/clerk/user-management': typeof ClerkAuthenticatedUserManagementRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
+  '/courses': typeof AuthenticatedCoursesIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/admin/sections/$sectionId/students': typeof AuthenticatedAdminSectionsSectionIdStudentsRoute
 }
 export interface FileRoutesByTo {
   '/clerk': typeof ClerkAuthenticatedRouteRouteWithChildren
@@ -337,6 +384,9 @@ export interface FileRoutesByTo {
   '/students': typeof CommonStudentsRoute
   '/subjects': typeof CommonSubjectsRoute
   '/': typeof AuthenticatedIndexRoute
+  '/admin/cohort-schedule': typeof AuthenticatedAdminCohortScheduleRoute
+  '/admin/import': typeof AuthenticatedAdminImportRoute
+  '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
@@ -345,11 +395,14 @@ export interface FileRoutesByTo {
   '/clerk/sign-in': typeof ClerkauthSignInRoute
   '/clerk/sign-up': typeof ClerkauthSignUpRoute
   '/clerk/user-management': typeof ClerkAuthenticatedUserManagementRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
+  '/courses': typeof AuthenticatedCoursesIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
+  '/admin/sections/$sectionId/students': typeof AuthenticatedAdminSectionsSectionIdStudentsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -381,6 +434,9 @@ export interface FileRoutesById {
   '/_common/students': typeof CommonStudentsRoute
   '/_common/subjects': typeof CommonSubjectsRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/cohort-schedule': typeof AuthenticatedAdminCohortScheduleRoute
+  '/_authenticated/admin/import': typeof AuthenticatedAdminImportRoute
+  '/_authenticated/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
@@ -389,12 +445,15 @@ export interface FileRoutesById {
   '/clerk/(auth)/sign-in': typeof ClerkauthSignInRoute
   '/clerk/(auth)/sign-up': typeof ClerkauthSignUpRoute
   '/clerk/_authenticated/user-management': typeof ClerkAuthenticatedUserManagementRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
+  '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
+  '/_authenticated/admin/sections/$sectionId/students': typeof AuthenticatedAdminSectionsSectionIdStudentsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -423,6 +482,9 @@ export interface FileRouteTypes {
     | '/students'
     | '/subjects'
     | '/'
+    | '/admin/cohort-schedule'
+    | '/admin/import'
+    | '/courses/$courseId'
     | '/errors/$error'
     | '/settings/account'
     | '/settings/appearance'
@@ -431,12 +493,15 @@ export interface FileRouteTypes {
     | '/clerk/sign-in'
     | '/clerk/sign-up'
     | '/clerk/user-management'
+    | '/admin'
     | '/apps'
     | '/chats'
+    | '/courses'
     | '/help-center'
     | '/settings/'
     | '/tasks'
     | '/users'
+    | '/admin/sections/$sectionId/students'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/clerk'
@@ -462,6 +527,9 @@ export interface FileRouteTypes {
     | '/students'
     | '/subjects'
     | '/'
+    | '/admin/cohort-schedule'
+    | '/admin/import'
+    | '/courses/$courseId'
     | '/errors/$error'
     | '/settings/account'
     | '/settings/appearance'
@@ -470,11 +538,14 @@ export interface FileRouteTypes {
     | '/clerk/sign-in'
     | '/clerk/sign-up'
     | '/clerk/user-management'
+    | '/admin'
     | '/apps'
     | '/chats'
+    | '/courses'
     | '/help-center'
     | '/tasks'
     | '/users'
+    | '/admin/sections/$sectionId/students'
   id:
     | '__root__'
     | '/_authenticated'
@@ -505,6 +576,9 @@ export interface FileRouteTypes {
     | '/_common/students'
     | '/_common/subjects'
     | '/_authenticated/'
+    | '/_authenticated/admin/cohort-schedule'
+    | '/_authenticated/admin/import'
+    | '/_authenticated/courses/$courseId'
     | '/_authenticated/errors/$error'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
@@ -513,12 +587,15 @@ export interface FileRouteTypes {
     | '/clerk/(auth)/sign-in'
     | '/clerk/(auth)/sign-up'
     | '/clerk/_authenticated/user-management'
+    | '/_authenticated/admin/'
     | '/_authenticated/apps/'
     | '/_authenticated/chats/'
+    | '/_authenticated/courses/'
     | '/_authenticated/help-center/'
     | '/_authenticated/settings/'
     | '/_authenticated/tasks/'
     | '/_authenticated/users/'
+    | '/_authenticated/admin/sections/$sectionId/students'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -763,6 +840,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/courses/': {
+      id: '/_authenticated/courses/'
+      path: '/courses'
+      fullPath: '/courses'
+      preLoaderRoute: typeof AuthenticatedCoursesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/chats/': {
       id: '/_authenticated/chats/'
       path: '/chats'
@@ -775,6 +859,13 @@ declare module '@tanstack/react-router' {
       path: '/apps'
       fullPath: '/apps'
       preLoaderRoute: typeof AuthenticatedAppsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/clerk/_authenticated/user-management': {
@@ -833,6 +924,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/courses/$courseId': {
+      id: '/_authenticated/courses/$courseId'
+      path: '/courses/$courseId'
+      fullPath: '/courses/$courseId'
+      preLoaderRoute: typeof AuthenticatedCoursesCourseIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/import': {
+      id: '/_authenticated/admin/import'
+      path: '/admin/import'
+      fullPath: '/admin/import'
+      preLoaderRoute: typeof AuthenticatedAdminImportRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/cohort-schedule': {
+      id: '/_authenticated/admin/cohort-schedule'
+      path: '/admin/cohort-schedule'
+      fullPath: '/admin/cohort-schedule'
+      preLoaderRoute: typeof AuthenticatedAdminCohortScheduleRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/sections/$sectionId/students': {
+      id: '/_authenticated/admin/sections/$sectionId/students'
+      path: '/admin/sections/$sectionId/students'
+      fullPath: '/admin/sections/$sectionId/students'
+      preLoaderRoute: typeof AuthenticatedAdminSectionsSectionIdStudentsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -866,12 +985,18 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExchangeRequestRoute: typeof AuthenticatedExchangeRequestRoute
   AuthenticatedStudentScheduleRoute: typeof AuthenticatedStudentScheduleRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminCohortScheduleRoute: typeof AuthenticatedAdminCohortScheduleRoute
+  AuthenticatedAdminImportRoute: typeof AuthenticatedAdminImportRoute
+  AuthenticatedCoursesCourseIdRoute: typeof AuthenticatedCoursesCourseIdRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
+  AuthenticatedCoursesIndexRoute: typeof AuthenticatedCoursesIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
+  AuthenticatedAdminSectionsSectionIdStudentsRoute: typeof AuthenticatedAdminSectionsSectionIdStudentsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -882,12 +1007,19 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExchangeRequestRoute: AuthenticatedExchangeRequestRoute,
   AuthenticatedStudentScheduleRoute: AuthenticatedStudentScheduleRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminCohortScheduleRoute: AuthenticatedAdminCohortScheduleRoute,
+  AuthenticatedAdminImportRoute: AuthenticatedAdminImportRoute,
+  AuthenticatedCoursesCourseIdRoute: AuthenticatedCoursesCourseIdRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
+  AuthenticatedCoursesIndexRoute: AuthenticatedCoursesIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
+  AuthenticatedAdminSectionsSectionIdStudentsRoute:
+    AuthenticatedAdminSectionsSectionIdStudentsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

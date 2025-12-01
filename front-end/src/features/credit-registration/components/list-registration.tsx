@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -43,10 +44,10 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
   // Filter subjects based on search and filters
   const filteredSubjects = subjects.filter(subject => {
     const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         subject.code.toLowerCase().includes(searchTerm.toLowerCase())
+      subject.code.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesSemester = semesterFilter === 'all' || subject.semester === semesterFilter
     const matchesType = typeFilter === 'all' || subject.type === typeFilter
-    
+
     return matchesSearch && matchesSemester && matchesType && (subject.available !== false)
   })
 
@@ -55,11 +56,12 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
     setDialogOpen(true)
     setIsLoadingSections(true)
     setSections([])
-    
+
     try {
-      const courseSections = await getCourseSections(subject.courseId)
+      const courseSectionsData = await getCourseSections(subject.courseId)
+      const courseSections = courseSectionsData.data || []
       setSections(courseSections)
-      
+
       if (courseSections.length === 0) {
         toast.info('Không có lớp học phần nào cho môn học này')
       }
@@ -85,7 +87,7 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
     try {
       setRegisteringSectionId(sectionId)
       await registerSection(sectionId)
-      
+
       if (!registeredSubjects.includes(subjectCode)) {
         onUpdateRegisteredSubjects([...registeredSubjects, subjectCode])
       }
@@ -227,7 +229,15 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 space-y-3">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900">{subject.name}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          <Link
+                            to="/courses/$courseId"
+                            params={{ courseId: String(subject.courseId) }}
+                            className="hover:text-primary hover:underline"
+                          >
+                            {subject.name}
+                          </Link>
+                        </h3>
                         <div className="flex flex-wrap items-center gap-4 mt-2">
                           <Badge variant="outline" className="text-xs">
                             {subject.code}
@@ -247,7 +257,7 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
                         Mô tả môn học đang được cập nhật...
                       </p>
                     </div>
-                    
+
                     <div className="flex flex-col items-end gap-2">
                       {isRegistered ? (
                         <>
@@ -255,9 +265,9 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
                             <CheckCircle2 className="h-3 w-3" />
                             Đã đăng ký
                           </Badge>
-                          <Button 
-                            size="sm" 
-                            variant="destructive" 
+                          <Button
+                            size="sm"
+                            variant="destructive"
                             className="flex items-center gap-1"
                             onClick={() => handleCancelRegistration(subject.code)}
                           >
@@ -268,8 +278,8 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
                       ) : (
                         <Dialog open={dialogOpen && selectedSubject?.code === subject.code} onOpenChange={setDialogOpen}>
                           <DialogTrigger asChild>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               className="flex items-center gap-1"
                               onClick={() => handleOpenDialog(subject)}
                             >
@@ -345,8 +355,8 @@ export function ListRegistration({ registeredSubjects, onUpdateRegisteredSubject
                                               Sức chứa: {section.maxStudents}
                                             </Badge>
                                             {section.status && (
-                                              <Badge 
-                                                variant={section.status === 'open' ? 'default' : 'secondary'} 
+                                              <Badge
+                                                variant={section.status === 'open' ? 'default' : 'secondary'}
                                                 className="text-xs"
                                               >
                                                 {section.status === 'open' ? 'Mở đăng ký' : section.status}
