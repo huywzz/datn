@@ -1,8 +1,10 @@
-import { Controller, Post, Get, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, ParseIntPipe, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CourseService } from '../service/course.service';
 import { CreateCourseDto } from '../dto/course.dto';
+import { QueryCourseDto } from '../dto/course.dto';
 import { Course } from '../entities/course.entity';
+import { PaginatedResponseDto } from 'src/common/dto/paginated-response.dto';
 
 @ApiTags('courses')
 @Controller('courses')
@@ -17,10 +19,15 @@ export class CourseController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all courses' })
-  @ApiResponse({ status: 200, description: 'List of courses', type: [Course] })
-  async findAll(): Promise<Course[]> {
-    return await this.courseService.findAll();
+  @ApiOperation({ summary: 'Get all courses with pagination and search' })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of courses',
+    type: PaginatedResponseDto<Course>,
+  })
+  async findAll(@Query() queryDto: QueryCourseDto): Promise<PaginatedResponseDto<Course>> {
+    const result = await this.courseService.findAll(queryDto);
+    return new PaginatedResponseDto(result.data, result.total, result.page, result.limit);
   }
 
   @Get(':id')

@@ -6,22 +6,12 @@ export class CreateRegistrationDto {
   @IsInt()
   @IsNotEmpty()
   sectionId: number;
-}
 
-export class UpdateRegistrationDto {
-  @ApiPropertyOptional({ description: 'Student ID', example: 1 })
+  @ApiPropertyOptional({ description: 'Student ID (Admin only)', example: 1 })
   @IsInt()
   @IsOptional()
   studentId?: number;
-
-  @ApiPropertyOptional({ description: 'Section ID', example: 1 })
-  @IsInt()
-  @IsOptional()
-  sectionId?: number;
-
-  @ApiPropertyOptional({ description: 'Registration status', enum: ['active', 'cancelled'] })
-  @IsEnum(['active', 'cancelled'])
-  @IsOptional()
-  status?: string;
 }
+
+
 

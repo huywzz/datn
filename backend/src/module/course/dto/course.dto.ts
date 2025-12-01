@@ -1,5 +1,6 @@
 import { IsInt, IsNotEmpty, IsString, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { BasePaginationQueryDto } from 'src/common/dto/base-pagination-query.dto';
 
 export class CreateCourseDto {
   @ApiProperty({ description: 'Course ID', example: 1 })
@@ -38,5 +39,17 @@ export class UpdateCourseDto {
   @IsInt()
   @IsOptional()
   credits?: number;
+}
+
+/**
+ * Query DTO for searching and filtering courses with pagination
+ */
+export class QueryCourseDto extends BasePaginationQueryDto {
+  // Inherits all pagination fields from BasePaginationQueryDto:
+  // - search: string (for searching by code or name)
+  // - page: number
+  // - limit: number
+  // - sortBy: string
+  // - sortOrder: SortOrder (ASC | DESC)
 }
 

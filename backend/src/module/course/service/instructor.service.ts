@@ -43,5 +43,16 @@ export class InstructorService {
       relations: ['sections'],
     });
   }
+
+  /**
+   * Find instructor by full name
+   * @param fullName - Instructor full name
+   * @returns Instructor or null
+   */
+  async findByFullName(fullName: string): Promise<Instructor | null> {
+    return await this.instructorRepository.findOne({
+      where: { fullName },
+    });
+  }
 }
 
