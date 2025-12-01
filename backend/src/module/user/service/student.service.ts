@@ -5,7 +5,7 @@ import { UserRepository } from '../repository/user.repository';
 import { StudentRepository } from '../repository/student.repository';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
-import { RegisterStudentDto, LoginStudentDto } from '../dto/student.dto';
+import { RegisterStudentDto, LoginStudentDto, FilterStudentDto } from '../dto/student.dto';
 import { JwtStrategyService } from '../../auth/service/jwt.strategy';
 import { Cohort } from '../../cohort/entities/cohort.entity';
 import * as bcrypt from 'bcrypt';
@@ -160,6 +160,31 @@ export class StudentService {
       student,
       accessToken,
     };
+  }
+
+  /**
+   * Find students by cohort with optional name search
+   * @param filterStudentDto - Filter parameters
+   * @returns List of students in the cohort
+   */
+  async findByCohort(filterStudentDto: FilterStudentDto): Promise<Student[]> {
+    const { cohortId, search } = filterStudentDto;
+
+    const queryBuilder = this.studentRepository
+      .createQueryBuilder('student')
+      .leftJoinAndSelect('student.user', 'user')
+      .leftJoinAndSelect('student.cohort', 'cohort')
+      .where('student.cohortId = :cohortId', { cohortId });
+
+    if (search) {
+      queryBuilder.andWhere('(student.fullName LIKE :search OR user.name LIKE :search)', {
+        search: `%${search}%`,
+      });
+    }
+
+    queryBuilder.orderBy('student.fullName', 'ASC');
+
+    return await queryBuilder.getMany();
   }
 }
 

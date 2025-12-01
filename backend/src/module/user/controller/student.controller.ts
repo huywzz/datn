@@ -1,7 +1,7 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { StudentService } from '../service/student.service';
-import { RegisterStudentDto, LoginStudentDto } from '../dto/student.dto';
+import { RegisterStudentDto, LoginStudentDto, FilterStudentDto } from '../dto/student.dto';
 import { User } from '../entities/user.entity';
 import { Student } from '../entities/student.entity';
 
@@ -25,6 +25,13 @@ export class StudentController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() loginStudentDto: LoginStudentDto): Promise<{ user: User; student: Student; accessToken: string }> {
     return await this.studentService.login(loginStudentDto);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get students by cohort with optional name search' })
+  @ApiResponse({ status: 200, description: 'List of students', type: [Student] })
+  async findByCohort(@Query() filterStudentDto: FilterStudentDto): Promise<Student[]> {
+    return await this.studentService.findByCohort(filterStudentDto);
   }
 }
 

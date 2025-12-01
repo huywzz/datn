@@ -8,6 +8,7 @@ import { CourseSectionRepository } from 'src/module/course/repository/course-sec
 import { User } from 'src/module/user/entities/user.entity';
 import { StudentRepository } from 'src/module/user/repository/student.repository';
 import { CourseSection } from 'src/module/course/entities/course-section.entity';
+import { CourseRegistrationPeriodRepository } from 'src/module/cohort/repository/course-registration-period.repository';
 
 @Injectable()
 export class RegistrationService {
@@ -17,7 +18,8 @@ export class RegistrationService {
     // private readonly userService: UserService,
     private readonly studentRepository: StudentRepository,
     @InjectDataSource() private readonly dataSource: DataSource,
-  ) {}
+    private courseRegistrationPeriodRepository: CourseRegistrationPeriodRepository,
+  ) { }
 
   /**
    * Create a new registration
@@ -25,20 +27,38 @@ export class RegistrationService {
    * @returns Created registration
    */
   async create(createRegistrationDto: CreateRegistrationDto, user: User) {
-    const foundStudent = await this.studentRepository.findOne({
-      where: { userId: user.userId },
-    });
-    console.log(foundStudent);
+    let foundStudent;
+
+    if (user.role === 'admin') {
+      if (!createRegistrationDto.studentId) {
+        throw new BadRequestException('Vui lòng cung cấp ID sinh viên!');
+      }
+      foundStudent = await this.studentRepository.findOne({
+        where: { id: createRegistrationDto.studentId },
+      });
+    } else {
+      foundStudent = await this.studentRepository.findOne({
+        where: { userId: user.userId },
+      });
+    }
 
     if (!foundStudent) {
       throw new BadRequestException('Sinh viên không tồn tại!');
     }
 
+    // check có đăng ký được không
+    const foundCohortRegistrationSchedule = await this.courseRegistrationPeriodRepository.findOne({
+      where: { status: true },
+    });
+    if (!foundCohortRegistrationSchedule) {
+      throw new BadRequestException('Không có đăng ký được!');
+    }
+
     const foundCourseSection = await this.courseSectionRepository.findOne({
       where: { sectionId: createRegistrationDto.sectionId },
       relations: {
-        classSchedules:true,
-        semester:true,
+        classSchedules: true,
+        semester: true,
       }
     });
 
@@ -47,22 +67,22 @@ export class RegistrationService {
     }
 
 
-    if(foundCourseSection.maxStudents===foundCourseSection.currentStudents) {
+    if (foundCourseSection.maxStudents === foundCourseSection.currentStudents) {
       throw new BadRequestException('Lớp học phần đã đầy!');
     }
 
     const sectionRegistered = await this.registrationRepository.find({
       where: {
         section: {
-          semesterId:foundStudent.currentSemester,
+          semesterId: foundStudent.currentSemester,
         },
         student: {
-          userId: user.userId,
+          id: foundStudent.id,
         },
       },
       relations: {
         section: {
-          classSchedules:true,
+          classSchedules: true,
         },
 
       }
@@ -222,6 +242,7 @@ export class RegistrationService {
       .filter(reg => reg.section?.classSchedules && reg.section.classSchedules.length > 0)
       .flatMap(registration =>
         registration.section.classSchedules.map(schedule => ({
+          registrationId: registration.registrationId,
           scheduleId: schedule.scheduleId,
           dayOfWeek: schedule.dayOfWeek,
           startPeriod: schedule.startPeriod,
@@ -245,6 +266,56 @@ export class RegistrationService {
       currentSemester: foundStudent.currentSemester,
       schedules,
     };
+  }
+
+
+
+  /**
+   * Cancel registration
+   * @param registrationId - Registration ID
+   * @param user - Current user requesting cancellation
+   */
+  async cancel(registrationId: number, user: User): Promise<void> {
+    const registration = await this.registrationRepository.findOne({
+      where: { registrationId },
+      relations: ['student', 'section'],
+    });
+
+    if (!registration) {
+      throw new BadRequestException('Đăng ký không tồn tại!');
+    }
+
+    // Check permissions
+    if (user.role !== 'admin') {
+      // If not admin, must be the student who owns the registration
+      const student = await this.studentRepository.findOne({
+        where: { userId: user.userId },
+      });
+
+      if (!student || student.id !== registration.studentId) {
+        throw new BadRequestException('Bạn không có quyền hủy đăng ký này!');
+      }
+    }
+
+    await this.dataSource.transaction(async (manager: EntityManager) => {
+      // Lock section to update student count
+      const section = await manager
+        .createQueryBuilder(CourseSection, 'section')
+        .setLock('pessimistic_write')
+        .where('section.sectionId = :sectionId', { sectionId: registration.sectionId })
+        .getOne();
+
+      if (section) {
+        await manager.update(
+          CourseSection,
+          { sectionId: section.sectionId },
+          { currentStudents: Math.max(section.currentStudents - 1, 0) },
+        );
+      }
+
+      // Soft delete registration
+      await manager.softDelete(Registration, registrationId);
+    });
   }
 }
 

@@ -66,3 +66,15 @@ export class LoginStudentDto {
   password: string;
 }
 
+export class FilterStudentDto {
+  @ApiProperty({ description: 'Cohort ID to filter by', example: '2021-2025' })
+  @IsString()
+  @IsNotEmpty()
+  cohortId: string;
+
+  @ApiPropertyOptional({ description: 'Search keyword for student name', example: 'Nguyen' })
+  @IsString()
+  @IsOptional()
+  search?: string;
+}
+
