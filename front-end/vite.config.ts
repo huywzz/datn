@@ -20,6 +20,8 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5174,
+    strictPort: true,
     headers: {
       'Referrer-Policy': 'no-referrer-when-downgrade',
     },
