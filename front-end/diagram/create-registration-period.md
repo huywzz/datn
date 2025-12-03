@@ -15,26 +15,25 @@ d) Main event flow:
 5. The admin selects a **start time** by choosing hour (HH) and minute (MM) from dropdowns (hours 00–23, minutes 00/15/30/45).  
 6. The admin selects an **end time** in the same way.  
 7. The admin clicks the **"Tạo lịch đăng ký"** button to submit the form.  
-8. The front-end combines each date with its time into ISO strings and sends a create registration period request to the back-end.  
-9. The back-end creates the registration period record in the database and returns success.  
-10. The front-end shows a success toast "Tạo lịch đăng ký thành công" and resets the form.  
-11. The use case ends.  
+8. The system creates the registration period.  
+9. The system shows a success notification "Tạo lịch đăng ký thành công" and resets the form.  
+10. The use case ends.  
 
 e) Branch flows / validation conditions:  
 
 - **A1 – Missing required time fields**  
   1. The admin does not choose a start time or end time (HH/MM not selected).  
-  2. The form validation fails and shows error messages like "Vui lòng chọn giờ bắt đầu." / "Vui lòng chọn giờ kết thúc.".  
-  3. The request is not sent to the back-end until all required fields are filled.  
+  2. The system shows error messages like "Vui lòng chọn giờ bắt đầu." / "Vui lòng chọn giờ kết thúc.".  
+  3. The admin must fill all required fields before submitting.  
 
 - **A2 – Past dates not allowed**  
   1. The admin tries to pick a past date for start or end date.  
-  2. The calendar component prevents selection (past dates are disabled by `isPastDate`), so the admin can only choose today or future dates.  
+  2. The system prevents selection of past dates, so the admin can only choose today or future dates.  
   3. The admin must adjust the date to a valid value before submitting.  
 
-- **A3 – Back-end error when creating registration period**  
-  1. The admin fills all fields correctly and submits, but the back-end returns an error (for example, API or business validation issue).  
-  2. The front-end shows an error toast with the message from the back-end (e.g. "Tạo đợt đăng ký tín chỉ thất bại").  
+- **A3 – System error when creating registration period**  
+  1. The admin fills all fields correctly and submits, but the system returns an error (for example, validation issue).  
+  2. The system shows an error notification (e.g. "Tạo đợt đăng ký tín chỉ thất bại").  
   3. The form remains on screen with the entered values so the admin can adjust and try again.  
 
 f) Post-condition:  

@@ -10,15 +10,13 @@ c) Pre-conditions:
 
 d) Main event flow:  
 1. The admin accesses the "Danh sách môn học" page (ImportPage).  
-2. The front-end automatically calls the API to get the list of courses.  
-3. The back-end reads course data from the database and returns the list.  
-4. The front-end displays the course table including code, name, credits, created date and updated date for each course.  
-5. The admin reviews the course list.  
-6. The use case ends.  
+2. The system displays the course table including code, name, credits, created date and updated date for each course.  
+3. The admin reviews the course list.  
+4. The use case ends.  
 
 e) Branch flow A1 – No courses found:  
-1. The API returns an empty list of courses.  
-2. The front-end shows the message "Không có dữ liệu môn học" in the table.  
+1. The system finds no courses.  
+2. The system shows the message "Không có dữ liệu môn học" in the table.  
 3. The use case ends.  
 
 f) Post-condition:  

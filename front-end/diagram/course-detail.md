@@ -10,21 +10,17 @@ c) Pre-conditions:
 
 d) Main event flow:  
 1. The admin selects a course (for example, clicks on a course in the "Danh sách môn học" page).  
-2. The front-end navigates to the course detail page.  
-3. The front-end calls the API to get the course information (code, name, credits, etc.).  
-4. The front-end calls the API to get the list of semesters (used for filtering sections).  
-5. The front-end calls the API to get the list of class groups (course sections) of that course.  
-6. The back-end reads the course and section data from the database and returns them.  
-7. The front-end displays:  
+2. The system navigates to the course detail page.  
+3. The system displays:  
    - The course information (code, name, credits).  
    - The table of class groups including section code, schedule, capacity, number of registered students, and status.  
-8. The admin reviews the course details and its class groups.  
-9. The admin may click on a class group row to navigate to the list of students for that class group.  
-10. The use case ends when the admin finishes reviewing the information.  
+4. The admin reviews the course details and its class groups.  
+5. The admin may click on a class group row to navigate to the list of students for that class group.  
+6. The use case ends when the admin finishes reviewing the information.  
 
 e) Branch flow A1 – No class groups for this course:  
-1. The API returns no class groups for the selected course.  
-2. The front-end shows the message "Chưa có lớp học phần nào" in the table.  
+1. The system finds no class groups for the selected course.  
+2. The system shows the message "Chưa có lớp học phần nào" in the table.  
 3. The admin understands that no sections exist yet for this course.  
 4. The use case ends.  
 
