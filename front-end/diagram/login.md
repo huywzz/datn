@@ -53,6 +53,10 @@ endif
 @enduml
 ```
 
+=== activity diagram image====
+
+![diagram](/image-diagram/login/activity-diagram-1.png)
+
 ---
 
 === sequence diagram====
@@ -91,5 +95,10 @@ end
 
 @enduml
 ```
+---
+
+=== sequence diagram image====
+
+![diagram](/image-diagram/login/sequence-diagram-1.png)
 
 

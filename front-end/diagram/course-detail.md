@@ -49,6 +49,10 @@ stop
 @enduml
 ```
 
+=== activity diagram image====
+
+![diagram](/image-diagram/course-detail/activity-diagram-1.png)
+
 === sequence diagram (view course detail and its sections)====
 
 ```plantuml
@@ -81,5 +85,9 @@ FE -> Admin: 14. Display course information\nand table of class groups
 
 @enduml
 ```
+
+=== sequence diagram image====
+
+![diagram](/image-diagram/course-detail/sequence-diagram-1.png)
 
 

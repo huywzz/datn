@@ -41,6 +41,10 @@ stop
 @enduml
 ```
 
+=== activity diagram image====
+
+![diagram](/image-diagram/admin-courses/activity-diagram-1.png)
+
 === sequence diagram (admin view all courses)====
 
 ```plantuml
@@ -62,5 +66,9 @@ FE -> Admin: 6. Render table of courses
 
 @enduml
 ```
+
+=== sequence diagram image====
+
+![diagram](/image-diagram/admin-courses/sequence-diagram-1.png)
 
 

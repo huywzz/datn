@@ -72,6 +72,10 @@ stop
 @enduml
 ```
 
+=== activity diagram image====
+
+![diagram](/image-diagram/section-students/activity-diagram-1.png)
+
 === sequence diagram (view students in a class group)====
 
 ```plantuml
@@ -99,5 +103,9 @@ FE -> Admin: 10. Display section info\nand table of students
 
 @enduml
 ```
+
+=== sequence diagram image====
+
+![diagram](/image-diagram/section-students/sequence-diagram-1.png)
 
 

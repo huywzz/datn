@@ -92,6 +92,10 @@ endif
 @enduml
 ```
 
+=== activity diagram image====
+
+![diagram](/image-diagram/import-course-sections/activity-diagram-1.png)
+
 === sequence diagram (admin import course sections)====
 
 ```plantuml
@@ -126,5 +130,9 @@ end
 
 @enduml
 ```
+
+=== sequence diagram image====
+
+![diagram](/image-diagram/import-course-sections/sequence-diagram-1.png)
 
 
