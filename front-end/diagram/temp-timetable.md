@@ -39,6 +39,10 @@ stop
 @enduml
 ```
 
+=== activity diagram image====
+
+![diagram](/image-diagram/temp-timetable/activity-diagram-1.png)
+
 === sequence diagram (view temporary timetable)====
 
 ```plantuml
@@ -61,5 +65,9 @@ User -> User: 7. View timetable
 
 @enduml
 ```
+
+=== sequence diagram image====
+
+![diagram](/image-diagram/temp-timetable/sequence-diagram-1.png)
 
 
