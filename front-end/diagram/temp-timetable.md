@@ -41,7 +41,7 @@ stop
 
 === activity diagram image====
 
-![diagram](/image-diagram/temp-timetable/activity-diagram-1.png)
+![diagram](../image-diagram/temp-timetable/activity-diagram-1.png)
 
 === sequence diagram (view temporary timetable)====
 
@@ -68,6 +68,6 @@ User -> User: 7. View timetable
 
 === sequence diagram image====
 
-![diagram](/image-diagram/temp-timetable/sequence-diagram-1.png)
+![diagram](../image-diagram/temp-timetable/sequence-diagram-1.png)
 
 

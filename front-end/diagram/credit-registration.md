@@ -100,7 +100,7 @@ endif
 
 === activity diagram image====
 
-![diagram](/image-diagram/credit-registration/activity-diagram-1.png)
+![diagram](../image-diagram/credit-registration/activity-diagram-1.png)
 
 === sequence diagram (credit registration by drag-and-drop)====
 
@@ -150,6 +150,6 @@ end
 
 === sequence diagram image====
 
-![diagram](/image-diagram/credit-registration/sequence-diagram-1.png)
+![diagram](../image-diagram/credit-registration/sequence-diagram-1.png)
 
 

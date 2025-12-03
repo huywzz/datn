@@ -68,7 +68,7 @@ endif
 
 === activity diagram image====
 
-![diagram](/image-diagram/student-cancel-registration/activity-diagram-1.png)
+![diagram](../image-diagram/student-cancel-registration/activity-diagram-1.png)
 
 === sequence diagram (student cancel registered class group)====
 
@@ -101,6 +101,6 @@ end
 
 === sequence diagram image====
 
-![diagram](/image-diagram/student-cancel-registration/sequence-diagram-1.png)
+![diagram](../image-diagram/student-cancel-registration/sequence-diagram-1.png)
 
 
