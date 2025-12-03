@@ -16,40 +16,38 @@ d) Main event flow (import course sections):
 5. The admin selects a cohort from the "Khóa" dropdown.  
 6. The admin chooses an Excel file (`.xlsx` or `.xls`) from their computer in the "File Excel" input.  
 7. The admin clicks the **"Import"** button to submit the form.  
-8. The front-end validates the form:  
+8. The system validates the form:  
    - A file has been selected.  
    - A valid semester id is selected.  
    - A cohort id is selected.  
-9. If validation passes, the front-end calls the back-end API to import course sections with the selected file, semester and cohort.  
-10. The back-end reads and processes the Excel file **row by row**, performing validations such as:  
+9. If validation passes, the system processes the Excel file **row by row**, performing validations such as:  
     - Check that each row has all required columns.  
     - Check whether the referenced course already exists; if not, mark that row as error.  
     - Check whether the section code is duplicated.  
     - Check that, for a section with multiple schedule rows, the schedules do not overlap with each other.  
-    - For any row that fails validation, add an error entry into an error array; for valid rows, create/update course sections in the database.  
-11. The back-end returns an import result including information about successful rows and an array of rows with errors and their messages.  
-12. The front-end shows a custom toast dialog containing the import result JSON (success, per-row errors, details).  
-12. The form is reset, the dialog is closed, and the course list is refreshed.  
-13. The use case ends.  
+    - For any row that fails validation, add an error entry into an error array; for valid rows, create/update course sections.  
+10. The system shows an import result including information about successful rows and an array of rows with errors and their messages.  
+11. The form is reset, the dialog is closed, and the course list is refreshed.  
+12. The use case ends.  
 
 e) Branch flows / validation conditions:  
 
 - **A1 – Missing or invalid form fields**  
   1. The admin submits the form without choosing a file, semester, or cohort.  
-  2. The validation fails and shows error messages such as "Vui lòng chọn file", "Vui lòng chọn học kỳ", "Vui lòng chọn khóa".  
-  3. No API call is made until all required fields are valid.  
+  2. The system shows error messages such as "Vui lòng chọn file", "Vui lòng chọn học kỳ", "Vui lòng chọn khóa".  
+  3. The admin must fill all required fields before submitting.  
 
 - **A2 – Per-row validation errors in Excel**  
-  1. The admin submits a valid form and the back-end starts processing rows.  
-  2. For some rows, the back-end detects problems such as: missing required columns, course not existing, duplicated section code, or overlapping schedules within the same section.  
-  3. The back-end collects these row errors (with row index and error message) into an error array and returns it in the import result.  
-  4. The front-end displays this error array in the JSON result so the admin can see which rows failed and why.  
-  5. Valid rows may still be imported successfully depending on back-end logic.  
+  1. The admin submits a valid form and the system starts processing rows.  
+  2. For some rows, the system detects problems such as: missing required columns, course not existing, duplicated section code, or overlapping schedules within the same section.  
+  3. The system collects these row errors (with row index and error message) into an error array.  
+  4. The system displays this error array in the import result so the admin can see which rows failed and why.  
+  5. Valid rows may still be imported successfully.  
 
-- **A3 – Back-end error during import (global failure)**  
-  1. The admin submits a valid form, but the back-end fails to process the Excel file entirely (e.g. wrong format, server error).  
-  2. The back-end returns an error message instead of a structured import result.  
-  3. The front-end shows an error toast with that message.  
+- **A3 – System error during import (global failure)**  
+  1. The admin submits a valid form, but the system fails to process the Excel file entirely (e.g. wrong format, server error).  
+  2. The system returns an error message instead of a structured import result.  
+  3. The system shows an error notification with that message.  
   4. The dialog remains open with the current selections so the admin can fix and retry.  
 
 f) Post-condition:  

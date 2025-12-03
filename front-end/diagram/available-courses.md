@@ -10,7 +10,7 @@ c) Pre-conditions:
 
 d) Main event flow:  
 1. The student selects the function to view available courses (opens the "Available courses" or credit registration screen).  
-2. The system loads and displays the list of available subjects/courses for the current registration period.  
+2. The system displays the list of available subjects/courses for the current registration period.  
 3. The student reviews the list of available courses (code, name, credits, etc.).  
 4. The student scrolls, browses, and checks which courses are marked as available.  
 5. The use case ends when the student has finished viewing the list (they may later proceed to register in another use case).  
