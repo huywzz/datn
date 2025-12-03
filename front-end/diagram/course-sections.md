@@ -52,7 +52,7 @@ endif
 
 === activity diagram image====
 
-![diagram](/image-diagram/course-sections/activity-diagram-1.png)
+![diagram](../image-diagram/course-sections/activity-diagram-1.png)
 
 === sequence diagram (view class groups for a course)====
 
@@ -86,6 +86,6 @@ end
 
 === sequence diagram image====
 
-![diagram](/image-diagram/course-sections/sequence-diagram-1.png)
+![diagram](../image-diagram/course-sections/sequence-diagram-1.png)
 
 

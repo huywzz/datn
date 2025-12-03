@@ -74,7 +74,7 @@ stop
 
 === activity diagram image====
 
-![diagram](/image-diagram/section-students/activity-diagram-1.png)
+![diagram](../image-diagram/section-students/activity-diagram-1.png)
 
 === sequence diagram (view students in a class group)====
 
@@ -106,6 +106,6 @@ FE -> Admin: 10. Display section info\nand table of students
 
 === sequence diagram image====
 
-![diagram](/image-diagram/section-students/sequence-diagram-1.png)
+![diagram](../image-diagram/section-students/sequence-diagram-1.png)
 
 

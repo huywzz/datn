@@ -43,7 +43,7 @@ stop
 
 === activity diagram image====
 
-![diagram](/image-diagram/admin-courses/activity-diagram-1.png)
+![diagram](../image-diagram/admin-courses/activity-diagram-1.png)
 
 === sequence diagram (admin view all courses)====
 
@@ -69,6 +69,6 @@ FE -> Admin: 6. Render table of courses
 
 === sequence diagram image====
 
-![diagram](/image-diagram/admin-courses/sequence-diagram-1.png)
+![diagram](../image-diagram/admin-courses/sequence-diagram-1.png)
 
 

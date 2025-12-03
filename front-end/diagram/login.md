@@ -55,7 +55,7 @@ endif
 
 === activity diagram image====
 
-![diagram](/image-diagram/login/activity-diagram-1.png)
+![diagram](../image-diagram/login/activity-diagram-1.png)
 
 ---
 
@@ -99,6 +99,6 @@ end
 
 === sequence diagram image====
 
-![diagram](/image-diagram/login/sequence-diagram-1.png)
+![diagram](../image-diagram/login/sequence-diagram-1.png)
 
 

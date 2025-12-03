@@ -68,7 +68,7 @@ endif
 
 === activity diagram image====
 
-![diagram](/image-diagram/admin-cancel-registration/activity-diagram-1.png)
+![diagram](../image-diagram/admin-cancel-registration/activity-diagram-1.png)
 
 === sequence diagram (admin cancel student registration in section)====
 
@@ -102,6 +102,6 @@ end
 
 === sequence diagram image====
 
-![diagram](/image-diagram/admin-cancel-registration/sequence-diagram-1.png)
+![diagram](../image-diagram/admin-cancel-registration/sequence-diagram-1.png)
 
 
