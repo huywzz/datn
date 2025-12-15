@@ -1,4 +1,4 @@
-import { DataSource } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { Course } from './entities/course.entity';
 import { CourseSection } from './entities/course-section.entity';
@@ -14,6 +14,7 @@ import {
   CLASS_SCHEDULE_REPOSITORY,
   INSTRUCTOR_REPOSITORY,
 } from 'src/common/constant/repository';
+import { RedisProviderService } from '../../provider/redis/redis-provider.service';
 
 export const courseProviders = [
   {
@@ -23,7 +24,7 @@ export const courseProviders = [
   },
   {
     provide: COURSE_SECTION_REPOSITORY,
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(CourseSection).extend(CourseSectionRepository),
+    useFactory: (dataSource: DataSource) => dataSource.getRepository(CourseSection),
     inject: [getDataSourceToken()],
   },
   {
@@ -49,8 +50,13 @@ export const courseProviders = [
   },
   {
     provide: CourseSectionRepository,
-    useFactory: (dataSource: DataSource) => dataSource.getRepository(CourseSection).extend(CourseSectionRepository),
-    inject: [getDataSourceToken()],
+    useFactory: (
+      courseSectionRepo: Repository<CourseSection>,
+      redisService: RedisProviderService,
+    ) => {
+      return new CourseSectionRepository(courseSectionRepo, redisService);
+    },
+    inject: [COURSE_SECTION_REPOSITORY, RedisProviderService],
   },
   {
     provide: InstructorRepository,

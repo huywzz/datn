@@ -9,11 +9,17 @@ import { CourseModule } from '../course/course.module';
 import { AuthModule } from '../auth/auth.module';
 import { UserModule } from '../user/user.module';
 import { CohortModule } from '../cohort/cohort.module';
+import { RegistrationValidationService } from './service/registration-validation.service';
 
 @Module({
   imports: [MysqlProviderModule, CourseModule, AuthModule, UserModule, CohortModule],
   controllers: [RegistrationController, ExchangeRequestController],
-  providers: [...registrationProviders, RegistrationService, ExchangeRequestService],
+  providers: [
+    RegistrationService,
+    RegistrationValidationService,
+    ExchangeRequestService,
+    ...registrationProviders,
+  ],
   exports: [RegistrationService, ExchangeRequestService],
 })
 export class RegistrationModule {}

@@ -9,17 +9,33 @@ import { User } from 'src/module/user/entities/user.entity';
 import { StudentRepository } from 'src/module/user/repository/student.repository';
 import { CourseSection } from 'src/module/course/entities/course-section.entity';
 import { CourseRegistrationPeriodRepository } from 'src/module/cohort/repository/course-registration-period.repository';
+import { RegistrationValidationService } from './registration-validation.service';
+import { RedisProviderService } from '../../../provider/redis/redis-provider.service';
+import Redis from 'ioredis';
 
 @Injectable()
 export class RegistrationService {
+  private readonly redis: Redis;
+
   constructor(
     private readonly registrationRepository: RegistrationRepository,
     private readonly courseSectionRepository: CourseSectionRepository,
     // private readonly userService: UserService,
     private readonly studentRepository: StudentRepository,
     @InjectDataSource() private readonly dataSource: DataSource,
-    private courseRegistrationPeriodRepository: CourseRegistrationPeriodRepository,
-  ) { }
+    private readonly registrationValidationService: RegistrationValidationService,
+    redisService: RedisProviderService,
+  ) {
+    this.redis = redisService.getClient();
+  }
+
+  /**
+   * Tạo key hash lưu các môn học mà sinh viên đã đăng ký trong một học kỳ
+   * Hash này đóng vai trò như hashMap: courseId -> CourseSection
+   */
+  private getCourseHashKey(studentId: number, semesterId: number): string {
+    return `registration:student:${studentId}:semester:${semesterId}:courses`;
+  }
 
   /**
    * Create a new registration
@@ -46,97 +62,13 @@ export class RegistrationService {
       throw new BadRequestException('Sinh viên không tồn tại!');
     }
 
-    // check có đăng ký được không
-    const foundCohortRegistrationSchedule = await this.courseRegistrationPeriodRepository.findOne({
-      where: { status: true },
-    });
-    if (!foundCohortRegistrationSchedule) {
-      throw new BadRequestException('Không có đăng ký được!');
-    }
-
-    const foundCourseSection = await this.courseSectionRepository.findOne({
-      where: { sectionId: createRegistrationDto.sectionId },
-      relations: {
-        classSchedules: true,
-        semester: true,
-      }
-    });
-
-    if (!foundCourseSection) {
-      throw new BadRequestException('Lớp học phần không tồn tại!');
-    }
-
-
-    if (foundCourseSection.maxStudents === foundCourseSection.currentStudents) {
-      throw new BadRequestException('Lớp học phần đã đầy!');
-    }
-
-    const sectionRegistered = await this.registrationRepository.find({
-      where: {
-        section: {
-          semesterId: foundStudent.currentSemester,
-        },
-        student: {
-          id: foundStudent.id,
-        },
-      },
-      relations: {
-        section: {
-          classSchedules: true,
-        },
-
-      }
-    })
-
-    // Kiểm tra xem đã đăng ký môn học này chưa (một sinh viên chỉ được đăng ký 1 section của 1 môn học)
-    const registeredCourseIds = sectionRegistered.map(
-      registration => registration.section?.courseId
-    ).filter((courseId): courseId is number => courseId !== undefined);
-
-    if (registeredCourseIds.includes(foundCourseSection.courseId)) {
-      const existingSection = sectionRegistered.find(
-        reg => reg.section?.courseId === foundCourseSection.courseId
+    // Validate tất cả điều kiện đăng ký
+    const foundCourseSection = 
+      await this.registrationValidationService.validateRegistration(
+        foundStudent.id,
+        foundStudent.currentSemester,
+        createRegistrationDto.sectionId,
       );
-      throw new BadRequestException(
-        `Bạn đã đăng ký môn học này ở lớp ${existingSection?.section?.sectionCode || ''}. ` +
-        `Mỗi sinh viên chỉ được đăng ký 1 học phần của một môn học.`
-      );
-    }
-
-    // Kiểm tra trùng giờ học với các lớp đã đăng ký
-    if (foundCourseSection.classSchedules && foundCourseSection.classSchedules.length > 0) {
-      // Lấy tất cả classSchedules từ các section đã đăng ký, kèm thông tin section để báo lỗi
-      const currentClassSchedulesWithSection = sectionRegistered
-        .filter(registration => registration.section?.classSchedules && registration.section.classSchedules.length > 0)
-        .flatMap(registration =>
-          registration.section.classSchedules.map(schedule => ({
-            schedule,
-            sectionCode: registration.section.sectionCode,
-          }))
-        );
-
-      const newSectionForRegistration = foundCourseSection.classSchedules;
-
-      // Kiểm tra từng lịch học mới với các lịch học đã có
-      for (const newSchedule of newSectionForRegistration) {
-        for (const { schedule: currentSchedule, sectionCode } of currentClassSchedulesWithSection) {
-          // Kiểm tra trùng ngày trong tuần
-          if (newSchedule.dayOfWeek === currentSchedule.dayOfWeek) {
-            // Kiểm tra chồng chéo khoảng thời gian
-            // Hai khoảng chồng chéo khi: newStart <= currentEnd AND newEnd >= currentStart
-            if (
-              newSchedule.startPeriod <= currentSchedule.endPeriod &&
-              newSchedule.endPeriod >= currentSchedule.startPeriod
-            ) {
-              throw new BadRequestException(
-                `Lớp học phần này bị trùng giờ với lớp ${sectionCode} ` +
-                `(Thứ ${newSchedule.dayOfWeek}, Tiết ${currentSchedule.startPeriod}-${currentSchedule.endPeriod})`
-              );
-            }
-          }
-        }
-      }
-    }
 
     // Thực hiện transaction: tạo registration và tăng currentStudents
     return await this.dataSource.transaction(async (manager: EntityManager) => {
@@ -173,6 +105,14 @@ export class RegistrationService {
         CourseSection,
         { sectionId: foundCourseSection.sectionId },
         { currentStudents: sectionInTransaction.currentStudents + 1 },
+      );
+
+      // Lưu hashMap courseId -> courseSection vào Redis cho sinh viên trong học kỳ hiện tại
+      const hashKey = this.getCourseHashKey(foundStudent.id, foundStudent.currentSemester);
+      await this.redis.hset(
+        hashKey,
+        foundCourseSection.courseId.toString(),
+        JSON.stringify(foundCourseSection),
       );
 
       // Load lại registration với relations để trả về đầy đủ thông tin
@@ -316,6 +256,13 @@ export class RegistrationService {
       // Soft delete registration
       await manager.softDelete(Registration, registrationId);
     });
+
+    // Xoá courseSection tương ứng khỏi Redis hashMap courseId -> courseSection
+    // Hash key: registration:student:{studentId}:semester:{semesterId}:courses
+    if (registration.section?.courseId) {
+      const hashKey = this.getCourseHashKey(registration.studentId, registration.semester);
+      await this.redis.hdel(hashKey, registration.section.courseId.toString());
+    }
   }
 }
 
