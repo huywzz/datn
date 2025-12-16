@@ -1,7 +1,7 @@
 import {
     LayoutDashboard,
     CalendarRange,
-    Upload,
+    // Upload,
     UserPlus,
     Book,
 } from 'lucide-react'
