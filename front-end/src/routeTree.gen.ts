@@ -37,6 +37,7 @@ import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-p
 import { Route as ClerkAuthenticatedRouteRouteImport } from './routes/clerk/_authenticated/route'
 import { Route as ClerkauthRouteRouteImport } from './routes/clerk/(auth)/route'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
+import { Route as AuthenticatedAdminRouteRouteImport } from './routes/_authenticated/admin/route'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
@@ -200,6 +201,11 @@ const AuthenticatedSettingsRouteRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminRouteRoute = AuthenticatedAdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
   id: '/users/',
   path: '/users/',
@@ -239,9 +245,9 @@ const AuthenticatedAppsIndexRoute = AuthenticatedAppsIndexRouteImport.update({
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
-  id: '/admin/',
-  path: '/admin/',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRouteRoute,
 } as any)
 const ClerkAuthenticatedUserManagementRoute =
   ClerkAuthenticatedUserManagementRouteImport.update({
@@ -297,25 +303,26 @@ const AuthenticatedCoursesCourseIdRoute =
   } as any)
 const AuthenticatedAdminImportRoute =
   AuthenticatedAdminImportRouteImport.update({
-    id: '/admin/import',
-    path: '/admin/import',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/import',
+    path: '/import',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminCohortScheduleRoute =
   AuthenticatedAdminCohortScheduleRouteImport.update({
-    id: '/admin/cohort-schedule',
-    path: '/admin/cohort-schedule',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/cohort-schedule',
+    path: '/cohort-schedule',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 const AuthenticatedAdminSectionsSectionIdStudentsRoute =
   AuthenticatedAdminSectionsSectionIdStudentsRouteImport.update({
-    id: '/admin/sections/$sectionId/students',
-    path: '/admin/sections/$sectionId/students',
-    getParentRoute: () => AuthenticatedRouteRoute,
+    id: '/sections/$sectionId/students',
+    path: '/sections/$sectionId/students',
+    getParentRoute: () => AuthenticatedAdminRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/clerk': typeof ClerkAuthenticatedRouteRouteWithChildren
+  '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/settings': typeof CommonSettingsRoute
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
@@ -349,7 +356,7 @@ export interface FileRoutesByFullPath {
   '/clerk/sign-in': typeof ClerkauthSignInRoute
   '/clerk/sign-up': typeof ClerkauthSignUpRoute
   '/clerk/user-management': typeof ClerkAuthenticatedUserManagementRoute
-  '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/courses': typeof AuthenticatedCoursesIndexRoute
@@ -408,6 +415,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/clerk': typeof ClerkRouteRouteWithChildren
   '/_common': typeof CommonRouteWithChildren
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/clerk/(auth)': typeof ClerkauthRouteRouteWithChildren
   '/clerk/_authenticated': typeof ClerkAuthenticatedRouteRouteWithChildren
@@ -458,6 +466,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/clerk'
+    | '/admin'
     | '/settings'
     | '/forgot-password'
     | '/otp'
@@ -491,7 +500,7 @@ export interface FileRouteTypes {
     | '/clerk/sign-in'
     | '/clerk/sign-up'
     | '/clerk/user-management'
-    | '/admin'
+    | '/admin/'
     | '/apps'
     | '/chats'
     | '/courses'
@@ -549,6 +558,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/clerk'
     | '/_common'
+    | '/_authenticated/admin'
     | '/_authenticated/settings'
     | '/clerk/(auth)'
     | '/clerk/_authenticated'
@@ -810,6 +820,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/users/': {
       id: '/_authenticated/users/'
       path: '/users'
@@ -861,10 +878,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
-      path: '/admin'
-      fullPath: '/admin'
+      path: '/'
+      fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/clerk/_authenticated/user-management': {
       id: '/clerk/_authenticated/user-management'
@@ -931,27 +948,49 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/import': {
       id: '/_authenticated/admin/import'
-      path: '/admin/import'
+      path: '/import'
       fullPath: '/admin/import'
       preLoaderRoute: typeof AuthenticatedAdminImportRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/admin/cohort-schedule': {
       id: '/_authenticated/admin/cohort-schedule'
-      path: '/admin/cohort-schedule'
+      path: '/cohort-schedule'
       fullPath: '/admin/cohort-schedule'
       preLoaderRoute: typeof AuthenticatedAdminCohortScheduleRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRouteRoute
     }
     '/_authenticated/admin/sections/$sectionId/students': {
       id: '/_authenticated/admin/sections/$sectionId/students'
-      path: '/admin/sections/$sectionId/students'
+      path: '/sections/$sectionId/students'
       fullPath: '/admin/sections/$sectionId/students'
       preLoaderRoute: typeof AuthenticatedAdminSectionsSectionIdStudentsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      parentRoute: typeof AuthenticatedAdminRouteRoute
     }
   }
 }
+
+interface AuthenticatedAdminRouteRouteChildren {
+  AuthenticatedAdminCohortScheduleRoute: typeof AuthenticatedAdminCohortScheduleRoute
+  AuthenticatedAdminImportRoute: typeof AuthenticatedAdminImportRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminSectionsSectionIdStudentsRoute: typeof AuthenticatedAdminSectionsSectionIdStudentsRoute
+}
+
+const AuthenticatedAdminRouteRouteChildren: AuthenticatedAdminRouteRouteChildren =
+  {
+    AuthenticatedAdminCohortScheduleRoute:
+      AuthenticatedAdminCohortScheduleRoute,
+    AuthenticatedAdminImportRoute: AuthenticatedAdminImportRoute,
+    AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+    AuthenticatedAdminSectionsSectionIdStudentsRoute:
+      AuthenticatedAdminSectionsSectionIdStudentsRoute,
+  }
+
+const AuthenticatedAdminRouteRouteWithChildren =
+  AuthenticatedAdminRouteRoute._addFileChildren(
+    AuthenticatedAdminRouteRouteChildren,
+  )
 
 interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
@@ -977,27 +1016,25 @@ const AuthenticatedSettingsRouteRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedCreditRegistrationRoute: typeof AuthenticatedCreditRegistrationRoute
   AuthenticatedCreditRegistrationScheduleRoute: typeof AuthenticatedCreditRegistrationScheduleRoute
   AuthenticatedExchangeRequestRoute: typeof AuthenticatedExchangeRequestRoute
   AuthenticatedStudentScheduleRoute: typeof AuthenticatedStudentScheduleRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedAdminCohortScheduleRoute: typeof AuthenticatedAdminCohortScheduleRoute
-  AuthenticatedAdminImportRoute: typeof AuthenticatedAdminImportRoute
   AuthenticatedCoursesCourseIdRoute: typeof AuthenticatedCoursesCourseIdRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
-  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedCoursesIndexRoute: typeof AuthenticatedCoursesIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
-  AuthenticatedAdminSectionsSectionIdStudentsRoute: typeof AuthenticatedAdminSectionsSectionIdStudentsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedCreditRegistrationRoute: AuthenticatedCreditRegistrationRoute,
   AuthenticatedCreditRegistrationScheduleRoute:
@@ -1005,19 +1042,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExchangeRequestRoute: AuthenticatedExchangeRequestRoute,
   AuthenticatedStudentScheduleRoute: AuthenticatedStudentScheduleRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedAdminCohortScheduleRoute: AuthenticatedAdminCohortScheduleRoute,
-  AuthenticatedAdminImportRoute: AuthenticatedAdminImportRoute,
   AuthenticatedCoursesCourseIdRoute: AuthenticatedCoursesCourseIdRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
-  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedCoursesIndexRoute: AuthenticatedCoursesIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
-  AuthenticatedAdminSectionsSectionIdStudentsRoute:
-    AuthenticatedAdminSectionsSectionIdStudentsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

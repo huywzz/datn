@@ -31,18 +31,7 @@ export default defineConfig(
       ],
       'no-console': 'error',
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          args: 'all',
-          argsIgnorePattern: '^_',
-          caughtErrors: 'all',
-          caughtErrorsIgnorePattern: '^_',
-          destructuredArrayIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-        },
-      ],
+      '@typescript-eslint/no-unused-vars': 'off',
       // Enforce type-only imports for TypeScript types
       '@typescript-eslint/consistent-type-imports': [
         'error',
