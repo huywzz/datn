@@ -7,66 +7,55 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Student } from '../../user/entities/student.entity';
 import { CourseSection } from '../../course/entities/course-section.entity';
+import { ExchangeTransaction } from './exchange-transaction.entity';
+
+export type ExchangeAction = 'ADD' | 'REMOVE';
 
 @Entity({ name: 'exchange_requests' })
 export class ExchangeRequest {
   @PrimaryGeneratedColumn({ name: 'exchange_id' })
   exchangeId: number;
 
-  @Column({ name: 'requester_id' })
-  requesterId: number;
+  @Column({ name: 'transaction_id' })
+  transactionId: number;
 
-  @Column({ name: 'from_section_id' })
-  fromSectionId: number;
+  @Column({ name: 'section_id' })
+  sectionId: number;
 
-  @Column({ name: 'desired_section_id' })
-  desiredSectionId: number;
+  @Column({
+    type: 'varchar',
+    name: 'action',
+  })
+  action: ExchangeAction;
 
-  @Column({ name: 'accepter_id', nullable: true })
-  accepterId: number;
-
-  @Column({ type: 'varchar', name: 'status', default: 'pending' })
-  status: string;
+  @Column({
+    type: 'varchar',
+    name: 'note',
+    nullable: true,
+  })
+  note?: string | null;
 
   @CreateDateColumn({ type: 'timestamp', name: 'created_at' })
   createdAt: Date;
 
-  @Column({ type: 'datetime', name: 'matched_at', nullable: true })
-  matchedAt: Date;
-
-  @Column({ type: 'datetime', name: 'accepted_at', nullable: true })
-  acceptedAt: Date;
-
-  @Column({ type: 'datetime', name: 'completed_at', nullable: true })
-  completedAt: Date;
-
   @UpdateDateColumn({ type: 'timestamp', name: 'updated_at' })
   updatedAt: Date;
 
-  @ManyToOne(() => Student, { nullable: false, onDelete: 'CASCADE', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'requester_id' })
-  requester: Student;
-
-  @ManyToOne(() => Student, { nullable: true, onDelete: 'SET NULL', onUpdate: 'CASCADE' })
-  @JoinColumn({ name: 'accepter_id' })
-  accepter: Student;
-
-  @ManyToOne(() => CourseSection, (section) => section.fromExchangeRequests, {
+  @ManyToOne(() => ExchangeTransaction, (transaction) => transaction.items, {
     nullable: false,
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
-  @JoinColumn({ name: 'from_section_id' })
-  fromSection: CourseSection;
+  @JoinColumn({ name: 'transaction_id' })
+  transaction: ExchangeTransaction;
 
-  @ManyToOne(() => CourseSection, (section) => section.desiredExchangeRequests, {
+  @ManyToOne(() => CourseSection, (section) => section.exchangeRequests, {
     nullable: false,
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
-  @JoinColumn({ name: 'desired_section_id' })
-  desiredSection: CourseSection;
+  @JoinColumn({ name: 'section_id' })
+  section: CourseSection;
 }
 

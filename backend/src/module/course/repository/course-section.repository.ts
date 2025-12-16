@@ -75,6 +75,51 @@ export class CourseSectionRepository extends Repository<CourseSection> {
   }
 
   /**
+   * Lấy course section đã được sinh viên đăng ký theo courseId từ Redis hash
+   * Hash key: registration:student:{studentId}:semester:{semesterId}:courses
+   * Field: courseId, Value: CourseSection (JSON)
+   */
+  async findRegisteredCourseSectionByCourseIdFromCache(
+    studentId: number,
+    semesterId: number,
+    courseId: number,
+  ): Promise<CourseSection | null> {
+    const hashKey = `registration:student:${studentId}:semester:${semesterId}:courses`;
+    const cached = await this.redis.hget(hashKey, courseId.toString());
+
+    if (!cached) return null;
+
+    return JSON.parse(cached) as CourseSection;
+  }
+
+  /**
+   * Lấy tất cả CourseSection mà sinh viên đã đăng ký trong một học kỳ từ Redis hash
+   * Hash key: registration:student:{studentId}:semester:{semesterId}:courses
+   * @returns Danh sách CourseSection (có thể rỗng nếu chưa đăng ký gì)
+   */
+  async getStudentRegisteredSectionsFromCache(
+    studentId: number,
+    semesterId: number,
+  ): Promise<CourseSection[]> {
+    const hashKey = `registration:student:${studentId}:semester:${semesterId}:courses`;
+    const values = await this.redis.hvals(hashKey);
+
+    if (!values || values.length === 0) {
+      return [];
+    }
+
+    return values
+      .map((raw) => {
+        try {
+          return JSON.parse(raw) as CourseSection;
+        } catch {
+          return null;
+        }
+      })
+      .filter((section): section is CourseSection => !!section);
+  }
+
+  /**
    * Override findOne với cache hỗ trợ đầy đủ FindOptions
    * Tự động lấy số lượng sinh viên đã đăng ký từ Redis và inject vào currentStudents
    */
@@ -104,6 +149,101 @@ export class CourseSectionRepository extends Repository<CourseSection> {
     }
 
     return courseSection;
+  }
+
+  /**
+   * Kiểm tra hai CourseSection có bị trùng lịch hay không
+   */
+  static hasScheduleConflictBetweenSections(
+    a: CourseSection,
+    b: CourseSection,
+  ): boolean {
+    if (!a.classSchedules || !b.classSchedules) return false;
+    if (a.classSchedules.length === 0 || b.classSchedules.length === 0) return false;
+
+    for (const sa of a.classSchedules) {
+      for (const sb of b.classSchedules) {
+        // Cùng thứ
+        if (sa.dayOfWeek !== sb.dayOfWeek) continue;
+
+        // Chồng chéo tiết: [sa.start, sa.end] overlap [sb.start, sb.end]
+        const isOverlap =
+          sa.startPeriod <= sb.endPeriod &&
+          sa.endPeriod >= sb.startPeriod;
+
+        if (isOverlap) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Kiểm tra xung đột lịch giữa 2 section với cache Redis
+   * - Key: course-section:conflict:{minId}:{maxId}
+   * - Value: '1' | '0'
+   */
+  async hasScheduleConflictCached(
+    a: CourseSection,
+    b: CourseSection,
+  ): Promise<boolean> {
+    const aId = Math.min(a.sectionId, b.sectionId);
+    const bId = Math.max(a.sectionId, b.sectionId);
+
+    const cacheKey = `course-section:conflict:${aId}:${bId}`;
+
+    // 1️⃣ Check cache
+    const cached = await this.redis.get(cacheKey);
+    if (cached === '1') return true;
+    if (cached === '0') return false;
+
+    // 2️⃣ Đảm bảo đã load classSchedules cho cả hai section (nếu chưa có)
+    let sectionA = a;
+    let sectionB = b;
+
+    if (!sectionA.classSchedules || sectionA.classSchedules.length === 0) {
+      const loadedA = await this.findOne({
+        where: { sectionId: a.sectionId },
+        relations: { classSchedules: true },
+      });
+      if (loadedA) {
+        sectionA = loadedA;
+      }
+    }
+
+    if (!sectionB.classSchedules || sectionB.classSchedules.length === 0) {
+      const loadedB = await this.findOne({
+        where: { sectionId: b.sectionId },
+        relations: { classSchedules: true },
+      });
+      if (loadedB) {
+        sectionB = loadedB;
+      }
+    }
+
+    // Nếu sau khi cố load mà vẫn thiếu schedules, coi như không có xung đột
+    if (
+      !sectionA.classSchedules ||
+      sectionA.classSchedules.length === 0 ||
+      !sectionB.classSchedules ||
+      sectionB.classSchedules.length === 0
+    ) {
+      await this.redis.set(cacheKey, '0', 'EX', 600);
+      return false;
+    }
+
+    // 3️⃣ Tính toán thật bằng hàm static
+    const hasConflict = CourseSectionRepository.hasScheduleConflictBetweenSections(
+      sectionA,
+      sectionB,
+    );
+
+    // 4️⃣ Lưu cache với TTL 10 phút
+    await this.redis.set(cacheKey, hasConflict ? '1' : '0', 'EX', 600);
+
+    return hasConflict;
   }
 }
 

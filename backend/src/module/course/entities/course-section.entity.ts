@@ -76,10 +76,7 @@ export class CourseSection {
   @OneToMany(() => Registration, (registration) => registration.section)
   registrations: Registration[];
 
-  @OneToMany(() => ExchangeRequest, (exchange) => exchange.fromSection)
-  fromExchangeRequests: ExchangeRequest[];
-
-  @OneToMany(() => ExchangeRequest, (exchange) => exchange.desiredSection)
-  desiredExchangeRequests: ExchangeRequest[];
+  @OneToMany(() => ExchangeRequest, (item) => item.section)
+  exchangeRequests: ExchangeRequest[];
 }
 
