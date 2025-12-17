@@ -63,7 +63,7 @@ export class RegistrationService {
     }
 
     // Validate tất cả điều kiện đăng ký
-    const foundCourseSection = 
+    const foundCourseSection =
       await this.registrationValidationService.validateRegistration(
         foundStudent.id,
         foundStudent.currentSemester,
@@ -263,6 +263,26 @@ export class RegistrationService {
       const hashKey = this.getCourseHashKey(registration.studentId, registration.semester);
       await this.redis.hdel(hashKey, registration.section.courseId.toString());
     }
+  }
+
+  async getSectionOfStudent(userId: number): Promise<CourseSection[]> {
+    const student = await this.studentRepository.findOne({ where: { userId } });
+    if (!student) {
+      throw new BadRequestException('Sinh viên không tồn tại!');
+    }
+    return await this.courseSectionRepository.find({
+      where: {
+        semesterId: student.currentSemester, 
+        registrations: {
+          studentId: student.id,
+        }
+      },
+      relations:{
+        classSchedules: true,
+        instructor: true,
+        course: true,
+      }
+    });
   }
 }
 

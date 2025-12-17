@@ -206,6 +206,74 @@ export async function getCourseSectionDetail(sectionId: number): Promise<CourseS
   }
 }
 
+export interface SearchCourseSectionsParams {
+  page?: number
+  limit?: number
+  courseId?: number
+  instructorId?: number
+  semesterId?: number
+  status?: string
+  search?: string
+  sortBy?: string
+  sortOrder?: 'ASC' | 'DESC'
+}
+
+export async function searchCourseSections(
+  params?: SearchCourseSectionsParams
+): Promise<import('./interface').PaginatedCourseSectionsData> {
+  try {
+    const response = await api.get<import('./interface').CourseSectionsResponse>(
+      '/course-sections/search',
+      {
+        params: {
+          page: params?.page || 1,
+          limit: params?.limit || 100,
+          sortBy: params?.sortBy || 'createdAt',
+          sortOrder: params?.sortOrder || 'DESC',
+          ...(params?.courseId && { courseId: params.courseId }),
+          ...(params?.instructorId && { instructorId: params.instructorId }),
+          ...(params?.semesterId && { semesterId: params.semesterId }),
+          ...(params?.status && { status: params.status }),
+          ...(params?.search && { search: params.search }),
+        },
+      }
+    )
+
+    if (!response.data?.success) {
+      throw new Error(response.data?.message || 'Không thể tìm kiếm lớp học phần.')
+    }
+
+    // Check if response is paginated
+    const responseData = response.data.data
+    if (responseData && 'total' in responseData) {
+      return responseData as import('./interface').PaginatedCourseSectionsData
+    }
+
+    // Fallback for non-paginated response
+    const sections = (responseData as import('./interface').CourseSection[]) || []
+    return {
+      data: sections,
+      total: sections.length,
+      page: 1,
+      limit: sections.length || 10,
+      totalPages: 1,
+      hasPrevious: false,
+      hasNext: false,
+    }
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Không thể tìm kiếm lớp học phần',
+      )
+    }
+
+    throw error
+  }
+}
+
 export async function getCourseDetails(courseId: number): Promise<Course> {
   try {
     const response = await api.get<{ success: boolean; data: Course }>(`/courses/${courseId}`)
@@ -252,6 +320,34 @@ export async function getMySchedule(): Promise<MyScheduleData> {
       )
     }
 
+    throw error
+  }
+}
+
+export async function getSectionOfStudent(): Promise<CourseSection[]> {
+  try {
+    const response = await api.get<CourseSection[] | { success: boolean; data?: CourseSection[]; message?: string }>('/registrations/section-of-student')
+    
+    // Check if response has wrapper format
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      const wrappedResponse = response.data as { success: boolean; data?: CourseSection[]; message?: string }
+      if (!wrappedResponse.success) {
+        throw new Error(wrappedResponse.message || 'Không thể tải danh sách lớp học phần.')
+      }
+      return wrappedResponse.data || []
+    }
+    
+    // Direct array response
+    return Array.isArray(response.data) ? response.data : []
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Không thể tải danh sách lớp học phần',
+      )
+    }
     throw error
   }
 }
@@ -303,6 +399,149 @@ export async function createCourseRegistrationPeriod(
         (error.response?.data as { message?: string; error?: string })?.error ||
         error.message ||
         'Tạo đợt đăng ký tín chỉ thất bại'
+      )
+    }
+    throw error
+  }
+}
+
+// ==================== Exchange transactions ====================
+
+export type ExchangeAction = 'ADD' | 'REMOVE'
+
+export interface ExchangeRequestItemPayload {
+  sectionId: number
+  action: ExchangeAction
+  note?: string
+}
+
+export interface CreateExchangeTransactionPayload {
+  items: ExchangeRequestItemPayload[]
+  description?: string
+  status?: string
+}
+
+export interface ExchangeTransactionItem {
+  exchangeId: number
+  transactionId: number
+  sectionId: number
+  action: ExchangeAction
+  note?: string | null
+  createdAt: string
+  updatedAt: string
+  section?: CourseSection
+}
+
+export interface ExchangeTransaction {
+  transactionId: number
+  studentId: number
+  status: string
+  description?: string | null
+  createdAt: string
+  updatedAt: string
+  student?: StudentInfo
+  items: ExchangeTransactionItem[]
+}
+
+export async function createExchangeTransaction(
+  payload: CreateExchangeTransactionPayload,
+): Promise<ExchangeTransaction> {
+  try {
+    const response = await api.post<ExchangeTransaction | { success: boolean; data?: ExchangeTransaction; message?: string }>('/exchange-transactions', payload)
+    
+    // Check if response has wrapper format
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      const wrappedResponse = response.data as { success: boolean; data?: ExchangeTransaction; message?: string }
+      if (!wrappedResponse.success) {
+        throw new Error(wrappedResponse.message || 'Không thể tạo yêu cầu đổi lớp.')
+      }
+      if (!wrappedResponse.data) {
+        throw new Error('Không có dữ liệu trả về từ server.')
+      }
+      return wrappedResponse.data
+    }
+    
+    // Direct object response
+    return response.data as ExchangeTransaction
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Không thể tạo yêu cầu đổi lớp',
+      )
+    }
+    throw error
+  }
+}
+
+export async function getMyExchangeTransactions(): Promise<ExchangeTransaction[]> {
+  try {
+    const response = await api.get<ExchangeTransaction[] | { success: boolean; data?: ExchangeTransaction[]; message?: string }>('/exchange-transactions/student')
+    
+    // Check if response has wrapper format
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      const wrappedResponse = response.data as { success: boolean; data?: ExchangeTransaction[]; message?: string }
+      if (!wrappedResponse.success) {
+        throw new Error(wrappedResponse.message || 'Không thể tải danh sách yêu cầu đổi lớp.')
+      }
+      return wrappedResponse.data || []
+    }
+    
+    // Direct array response
+    return Array.isArray(response.data) ? response.data : []
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Không thể tải danh sách yêu cầu đổi lớp',
+      )
+    }
+    throw error
+  }
+}
+
+export async function getAllExchangeTransactions(): Promise<ExchangeTransaction[]> {
+  try {
+    const response = await api.get<ExchangeTransaction[] | { success: boolean; data?: ExchangeTransaction[]; message?: string }>('/exchange-transactions')
+    
+    // Check if response has wrapper format
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      const wrappedResponse = response.data as { success: boolean; data?: ExchangeTransaction[]; message?: string }
+      if (!wrappedResponse.success) {
+        throw new Error(wrappedResponse.message || 'Không thể tải danh sách yêu cầu đổi lớp.')
+      }
+      return wrappedResponse.data || []
+    }
+    
+    // Direct array response
+    return Array.isArray(response.data) ? response.data : []
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Không thể tải danh sách yêu cầu đổi lớp',
+      )
+    }
+    throw error
+  }
+}
+
+export async function deleteExchangeTransaction(transactionId: number): Promise<void> {
+  try {
+    await api.delete(`/exchange-transactions/${transactionId}`)
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Xóa yêu cầu đổi lớp thất bại',
       )
     }
     throw error
