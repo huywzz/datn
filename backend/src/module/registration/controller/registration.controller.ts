@@ -38,6 +38,13 @@ export class RegistrationController {
     return await this.registrationService.getMySchedule(user);
   }
 
+  @Get('/section-of-student')
+  @ApiOperation({ summary: 'Get section of student' })
+  @ApiResponse({ status: 200, description: 'Section of student' })
+  async getSectionOfStudent(@CurrentUser() user: User) {
+    return await this.registrationService.getSectionOfStudent(user.userId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get registration by ID' })
   @ApiResponse({ status: 200, description: 'Registration found', type: Registration })

@@ -21,7 +21,6 @@ import { Route as CommonProfileRouteImport } from './routes/_common/profile'
 import { Route as CommonCourseRegistrationRouteImport } from './routes/_common/course-registration'
 import { Route as CommonClassesRouteImport } from './routes/_common/classes'
 import { Route as AuthenticatedStudentScheduleRouteImport } from './routes/_authenticated/student-schedule'
-import { Route as AuthenticatedExchangeRequestRouteImport } from './routes/_authenticated/exchange-request'
 import { Route as AuthenticatedCreditRegistrationScheduleRouteImport } from './routes/_authenticated/credit-registration-schedule'
 import { Route as AuthenticatedCreditRegistrationRouteImport } from './routes/_authenticated/credit-registration'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
@@ -42,6 +41,7 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
+import { Route as AuthenticatedExchangeRequestIndexRouteImport } from './routes/_authenticated/exchange-request/index'
 import { Route as AuthenticatedCoursesIndexRouteImport } from './routes/_authenticated/courses/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
 import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
@@ -53,6 +53,8 @@ import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
+import { Route as AuthenticatedExchangeRequestCreateRouteImport } from './routes/_authenticated/exchange-request/create'
+import { Route as AuthenticatedExchangeRequestAllRouteImport } from './routes/_authenticated/exchange-request/all'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedCoursesCourseIdRouteImport } from './routes/_authenticated/courses/$courseId'
 import { Route as AuthenticatedAdminImportRouteImport } from './routes/_authenticated/admin/import'
@@ -117,12 +119,6 @@ const AuthenticatedStudentScheduleRoute =
   AuthenticatedStudentScheduleRouteImport.update({
     id: '/student-schedule',
     path: '/student-schedule',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedExchangeRequestRoute =
-  AuthenticatedExchangeRequestRouteImport.update({
-    id: '/exchange-request',
-    path: '/exchange-request',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCreditRegistrationScheduleRoute =
@@ -228,6 +224,12 @@ const AuthenticatedHelpCenterIndexRoute =
     path: '/help-center/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedExchangeRequestIndexRoute =
+  AuthenticatedExchangeRequestIndexRouteImport.update({
+    id: '/exchange-request/',
+    path: '/exchange-request/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCoursesIndexRoute =
   AuthenticatedCoursesIndexRouteImport.update({
     id: '/courses/',
@@ -289,6 +291,18 @@ const AuthenticatedSettingsAccountRoute =
     path: '/account',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
+const AuthenticatedExchangeRequestCreateRoute =
+  AuthenticatedExchangeRequestCreateRouteImport.update({
+    id: '/exchange-request/create',
+    path: '/exchange-request/create',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedExchangeRequestAllRoute =
+  AuthenticatedExchangeRequestAllRouteImport.update({
+    id: '/exchange-request/all',
+    path: '/exchange-request/all',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
     id: '/errors/$error',
@@ -336,7 +350,6 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/credit-registration': typeof AuthenticatedCreditRegistrationRoute
   '/credit-registration-schedule': typeof AuthenticatedCreditRegistrationScheduleRoute
-  '/exchange-request': typeof AuthenticatedExchangeRequestRoute
   '/student-schedule': typeof AuthenticatedStudentScheduleRoute
   '/classes': typeof CommonClassesRoute
   '/course-registration': typeof CommonCourseRegistrationRoute
@@ -349,6 +362,8 @@ export interface FileRoutesByFullPath {
   '/admin/import': typeof AuthenticatedAdminImportRoute
   '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/exchange-request/all': typeof AuthenticatedExchangeRequestAllRoute
+  '/exchange-request/create': typeof AuthenticatedExchangeRequestCreateRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -360,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/courses': typeof AuthenticatedCoursesIndexRoute
+  '/exchange-request': typeof AuthenticatedExchangeRequestIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
@@ -380,7 +396,6 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/credit-registration': typeof AuthenticatedCreditRegistrationRoute
   '/credit-registration-schedule': typeof AuthenticatedCreditRegistrationScheduleRoute
-  '/exchange-request': typeof AuthenticatedExchangeRequestRoute
   '/student-schedule': typeof AuthenticatedStudentScheduleRoute
   '/classes': typeof CommonClassesRoute
   '/course-registration': typeof CommonCourseRegistrationRoute
@@ -394,6 +409,8 @@ export interface FileRoutesByTo {
   '/admin/import': typeof AuthenticatedAdminImportRoute
   '/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/exchange-request/all': typeof AuthenticatedExchangeRequestAllRoute
+  '/exchange-request/create': typeof AuthenticatedExchangeRequestCreateRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -405,6 +422,7 @@ export interface FileRoutesByTo {
   '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/courses': typeof AuthenticatedCoursesIndexRoute
+  '/exchange-request': typeof AuthenticatedExchangeRequestIndexRoute
   '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/tasks': typeof AuthenticatedTasksIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
@@ -431,7 +449,6 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/credit-registration': typeof AuthenticatedCreditRegistrationRoute
   '/_authenticated/credit-registration-schedule': typeof AuthenticatedCreditRegistrationScheduleRoute
-  '/_authenticated/exchange-request': typeof AuthenticatedExchangeRequestRoute
   '/_authenticated/student-schedule': typeof AuthenticatedStudentScheduleRoute
   '/_common/classes': typeof CommonClassesRoute
   '/_common/course-registration': typeof CommonCourseRegistrationRoute
@@ -445,6 +462,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/import': typeof AuthenticatedAdminImportRoute
   '/_authenticated/courses/$courseId': typeof AuthenticatedCoursesCourseIdRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/exchange-request/all': typeof AuthenticatedExchangeRequestAllRoute
+  '/_authenticated/exchange-request/create': typeof AuthenticatedExchangeRequestCreateRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -456,6 +475,7 @@ export interface FileRoutesById {
   '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/courses/': typeof AuthenticatedCoursesIndexRoute
+  '/_authenticated/exchange-request/': typeof AuthenticatedExchangeRequestIndexRoute
   '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
@@ -480,7 +500,6 @@ export interface FileRouteTypes {
     | '/503'
     | '/credit-registration'
     | '/credit-registration-schedule'
-    | '/exchange-request'
     | '/student-schedule'
     | '/classes'
     | '/course-registration'
@@ -493,6 +512,8 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/courses/$courseId'
     | '/errors/$error'
+    | '/exchange-request/all'
+    | '/exchange-request/create'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -504,6 +525,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/chats'
     | '/courses'
+    | '/exchange-request'
     | '/help-center'
     | '/settings/'
     | '/tasks'
@@ -524,7 +546,6 @@ export interface FileRouteTypes {
     | '/503'
     | '/credit-registration'
     | '/credit-registration-schedule'
-    | '/exchange-request'
     | '/student-schedule'
     | '/classes'
     | '/course-registration'
@@ -538,6 +559,8 @@ export interface FileRouteTypes {
     | '/admin/import'
     | '/courses/$courseId'
     | '/errors/$error'
+    | '/exchange-request/all'
+    | '/exchange-request/create'
     | '/settings/account'
     | '/settings/appearance'
     | '/settings/display'
@@ -549,6 +572,7 @@ export interface FileRouteTypes {
     | '/apps'
     | '/chats'
     | '/courses'
+    | '/exchange-request'
     | '/help-center'
     | '/tasks'
     | '/users'
@@ -574,7 +598,6 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/credit-registration'
     | '/_authenticated/credit-registration-schedule'
-    | '/_authenticated/exchange-request'
     | '/_authenticated/student-schedule'
     | '/_common/classes'
     | '/_common/course-registration'
@@ -588,6 +611,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/import'
     | '/_authenticated/courses/$courseId'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/exchange-request/all'
+    | '/_authenticated/exchange-request/create'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
@@ -599,6 +624,7 @@ export interface FileRouteTypes {
     | '/_authenticated/apps/'
     | '/_authenticated/chats/'
     | '/_authenticated/courses/'
+    | '/_authenticated/exchange-request/'
     | '/_authenticated/help-center/'
     | '/_authenticated/settings/'
     | '/_authenticated/tasks/'
@@ -706,13 +732,6 @@ declare module '@tanstack/react-router' {
       path: '/student-schedule'
       fullPath: '/student-schedule'
       preLoaderRoute: typeof AuthenticatedStudentScheduleRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/exchange-request': {
-      id: '/_authenticated/exchange-request'
-      path: '/exchange-request'
-      fullPath: '/exchange-request'
-      preLoaderRoute: typeof AuthenticatedExchangeRequestRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/credit-registration-schedule': {
@@ -855,6 +874,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/exchange-request/': {
+      id: '/_authenticated/exchange-request/'
+      path: '/exchange-request'
+      fullPath: '/exchange-request'
+      preLoaderRoute: typeof AuthenticatedExchangeRequestIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/courses/': {
       id: '/_authenticated/courses/'
       path: '/courses'
@@ -931,6 +957,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/account'
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
+    '/_authenticated/exchange-request/create': {
+      id: '/_authenticated/exchange-request/create'
+      path: '/exchange-request/create'
+      fullPath: '/exchange-request/create'
+      preLoaderRoute: typeof AuthenticatedExchangeRequestCreateRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exchange-request/all': {
+      id: '/_authenticated/exchange-request/all'
+      path: '/exchange-request/all'
+      fullPath: '/exchange-request/all'
+      preLoaderRoute: typeof AuthenticatedExchangeRequestAllRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/errors/$error': {
       id: '/_authenticated/errors/$error'
@@ -1020,14 +1060,16 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedCreditRegistrationRoute: typeof AuthenticatedCreditRegistrationRoute
   AuthenticatedCreditRegistrationScheduleRoute: typeof AuthenticatedCreditRegistrationScheduleRoute
-  AuthenticatedExchangeRequestRoute: typeof AuthenticatedExchangeRequestRoute
   AuthenticatedStudentScheduleRoute: typeof AuthenticatedStudentScheduleRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCoursesCourseIdRoute: typeof AuthenticatedCoursesCourseIdRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
+  AuthenticatedExchangeRequestAllRoute: typeof AuthenticatedExchangeRequestAllRoute
+  AuthenticatedExchangeRequestCreateRoute: typeof AuthenticatedExchangeRequestCreateRoute
   AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
   AuthenticatedCoursesIndexRoute: typeof AuthenticatedCoursesIndexRoute
+  AuthenticatedExchangeRequestIndexRoute: typeof AuthenticatedExchangeRequestIndexRoute
   AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
   AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
@@ -1039,14 +1081,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCreditRegistrationRoute: AuthenticatedCreditRegistrationRoute,
   AuthenticatedCreditRegistrationScheduleRoute:
     AuthenticatedCreditRegistrationScheduleRoute,
-  AuthenticatedExchangeRequestRoute: AuthenticatedExchangeRequestRoute,
   AuthenticatedStudentScheduleRoute: AuthenticatedStudentScheduleRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCoursesCourseIdRoute: AuthenticatedCoursesCourseIdRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
+  AuthenticatedExchangeRequestAllRoute: AuthenticatedExchangeRequestAllRoute,
+  AuthenticatedExchangeRequestCreateRoute:
+    AuthenticatedExchangeRequestCreateRoute,
   AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
   AuthenticatedCoursesIndexRoute: AuthenticatedCoursesIndexRoute,
+  AuthenticatedExchangeRequestIndexRoute:
+    AuthenticatedExchangeRequestIndexRoute,
   AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
   AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,

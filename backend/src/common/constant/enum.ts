@@ -46,3 +46,16 @@ export enum Period {
   EIGHT = 8,
   NINE = 9,
 }
+
+export enum ExchangeTransactionStatus {
+  PENDING = 'pending',
+  MATCHED = 'matched',
+  ACCEPTED = 'accepted',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+export enum ExchangeAction {
+  ADD = 'ADD',
+  REMOVE = 'REMOVE',
+}

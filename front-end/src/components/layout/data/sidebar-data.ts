@@ -6,6 +6,9 @@ import {
   CalendarCheck,
   List,
   Calendar,
+  ArrowLeftRight,
+  Inbox,
+  Users,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 import { getLocalStorage } from '@/lib/local-storage'
@@ -75,10 +78,21 @@ export const sidebarData: SidebarData = {
           url: '/student-schedule',
           icon: CalendarCheck,
         },
-         {
+        {
           title: 'Trao đổi tín chỉ',
-          url: '/exchange-request',
-          icon: CalendarCheck,
+          icon: ArrowLeftRight,
+          items: [
+            {
+              title: 'Yêu cầu của tôi',
+              url: '/exchange-request',
+              icon: Inbox,
+            },
+            {
+              title: 'Tất cả yêu cầu',
+              url: '/exchange-request/all',
+              icon: Users,
+            },
+          ],
         },
         // {
         //   title: 'Secured by Clerk',
