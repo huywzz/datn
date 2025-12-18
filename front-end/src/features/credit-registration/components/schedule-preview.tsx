@@ -92,39 +92,48 @@ export function SchedulePreview({ registeredSubjects, onRemoveSubject }: Schedul
                   const subjectCode = schedule?.section.courseCode
                   const isRegistered = subjectCode ? isSubjectRegistered(subjectCode) : false
                   
+                  // Check if this is the head cell (start period)
+                  const isHead = schedule && slot === schedule.startPeriod
+                  
                   return (
                     <div
                       key={`${day}-${slot}`}
-                      className={`min-h-[60px] p-2 rounded border-2 border-dashed border-muted-foreground/20 transition-all duration-200 ${
+                      className={`min-h-[70px] p-2 rounded border-2 border-dashed border-muted-foreground/20 transition-all duration-200 ${
                         hoveredSlot === `${day}-${slot}` ? 'border-primary/50 bg-primary/5' : ''
                       } ${schedule ? 'border-solid' : ''}`}
                       onMouseEnter={() => setHoveredSlot(`${day}-${slot}`)}
                       onMouseLeave={() => setHoveredSlot(null)}
                     >
                       {schedule && (
-                        <div className={`p-2 rounded text-xs bg-blue-100 text-blue-800 ${!isRegistered ? 'opacity-50' : ''}`}>
-                          <div className="font-medium">{subjectCode}</div>
-                          <div className="text-xs opacity-80">{schedule.section.courseName}</div>
-                          <div className="flex items-center gap-1 mt-1">
-                            <User className="h-3 w-3" />
-                            <span className="text-xs">GV: {schedule.section.instructorId}</span>
+                        isHead ? (
+                          // Head cell - show full info with X button on top right
+                          <div className={`relative p-3 rounded-lg shadow-sm text-xs bg-blue-100 text-blue-800 border border-blue-200 transition-all hover:shadow-md ${!isRegistered ? 'opacity-50' : ''}`}>
+                            {isRegistered && (
+                              <button
+                                className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md transition-all hover:scale-110 z-20"
+                                onClick={() => subjectCode && onRemoveSubject(subjectCode)}
+                                title="Hủy môn học"
+                              >
+                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                            <div className="font-bold text-sm mb-1">{subjectCode}</div>
+                            <div className="text-xs font-medium opacity-90 line-clamp-2 leading-tight mb-2">{schedule.section.courseName}</div>
+                            <div className="flex items-center gap-1 text-[10px] opacity-75">
+                              <User className="h-3 w-3" />
+                              <span>GV: {schedule.section.instructorId}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] opacity-75">
+                              <MapPin className="h-3 w-3" />
+                              <span>{schedule.room}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            <span className="text-xs">{schedule.room}</span>
-                          </div>
-                          {isRegistered && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              className="w-full mt-2 h-6 text-xs"
-                              onClick={() => subjectCode && onRemoveSubject(subjectCode)}
-                            >
-                              <X className="h-3 w-3 mr-1" />
-                              Hủy
-                            </Button>
-                          )}
-                        </div>
+                        ) : (
+                          // Continuation cell - just show color
+                          <div className={`p-3 rounded-lg shadow-sm bg-blue-100 border border-blue-200 min-h-[46px] transition-all ${!isRegistered ? 'opacity-50' : ''}`}></div>
+                        )
                       )}
                     </div>
                   )

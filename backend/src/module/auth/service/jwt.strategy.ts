@@ -21,9 +21,14 @@ export class JwtStrategyService {
    * @returns Decoded token payload
    */
   async verifyToken(token: string): Promise<any> {
-    return await this.jwtService.verify(token, {
-      secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
-    });
+    try { 
+      return await this.jwtService.verify(token, {
+        secret: this.configService.get<string>('JWT_SECRET') || 'your-secret-key',
+      });
+    } catch (err) {
+      // this.logger.warn(err);
+      throw new UnauthorizedException('Invalid JWT token');
+    }
   }
 
   /**
@@ -86,7 +91,7 @@ export class JwtStrategyService {
 
       return user;
     } catch (err) {
-      this.logger.warn(err);
+      // this.logger.warn(err);
       throw new UnauthorizedException('Invalid JWT token');
     }
   }

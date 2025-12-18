@@ -116,10 +116,16 @@ export function StudentSchedule() {
               )}
               {/* Schedule Table */}
               <div className='overflow-x-auto'>
-                <table className='w-full border-collapse border border-gray-300'>
+                <table className='w-full border-collapse border border-gray-300 table-fixed'>
+                  <colgroup>
+                    <col className='w-20' />
+                    {daysOfWeek.map((_, idx) => (
+                      <col key={idx} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr className='bg-gray-50'>
-                      <th className='border border-gray-300 p-2 text-center font-medium'>TIẾT</th>
+                      <th className='border border-gray-300 p-2 text-center font-medium w-20'>TIẾT</th>
                       {daysOfWeek.map((day) => (
                         <th key={day.name} className='border border-gray-300 p-2 text-center'>
                           <div className='font-medium'>{day.name}</div>

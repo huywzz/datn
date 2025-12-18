@@ -34,7 +34,7 @@ export function WelcomePage() {
               Bắt đầu bằng việc đăng ký tín chỉ cho học kỳ hiện tại.
             </p>
             <Button asChild size="lg">
-              <Link to="/credit-registration-schedule">Đi tới trang đăng ký tín chỉ</Link>
+              <Link to="/credit-registration">Đi tới trang đăng ký tín chỉ</Link>
             </Button>
           </div>
         </div>

@@ -72,7 +72,7 @@ const mapDayOfWeek = (dayOfWeek: string): 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7
 const mapApiSectionToSection = (apiSection: ApiCourseSection, subjectCode: string): Section => {
   // Parse classSchedules from API response
   const classSchedules = apiSection.classSchedules || []
-  
+
   // Convert classSchedules to meetings format
   const meetings = classSchedules
     .filter(schedule => schedule && schedule.dayOfWeek && schedule.startPeriod && schedule.endPeriod)
@@ -81,15 +81,15 @@ const mapApiSectionToSection = (apiSection: ApiCourseSection, subjectCode: strin
       period: schedule.startPeriod,
       length: schedule.endPeriod - schedule.startPeriod + 1,
     }))
-  
+
   // Get room from first schedule or use schedule string
-  const room = classSchedules.length > 0 
-    ? classSchedules[0].room 
+  const room = classSchedules.length > 0
+    ? classSchedules[0].room
     : apiSection.schedule?.split(' - ')[1] || 'Chưa có thông tin'
-  
+
   // Get instructor name
   const teacher = apiSection.instructor?.fullName || 'Chưa có thông tin'
-  
+
   return {
     id: apiSection.sectionId?.toString() || `section-${Date.now()}`,
     classCode: apiSection.sectionCode || `SECTION-${apiSection.sectionId}`,
@@ -114,6 +114,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
   type ScheduledCell = {
     subject: Subject
     sectionId: string // Add sectionId to track which section this cell belongs to
+    sectionCode: string // Section code from API (e.g., DTDM-05)
     color: string
     isHead: boolean
     length: number
@@ -153,6 +154,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
           dayMap[p] = {
             subject: subjectInfo,
             sectionId: String(s.section.sectionId),
+            sectionCode: s.section.sectionCode,
             color: getSubjectColor(subjectCode),
             isHead: p === start,
             length: p === start ? length : 0,
@@ -176,10 +178,10 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
   useEffect(() => {
     if (hasSyncedInitialSchedule) return
     if (!subjects || subjects.length === 0) return
-    ;(async () => {
-      await syncScheduleFromServer()
-      setHasSyncedInitialSchedule(true)
-    })()
+      ; (async () => {
+        await syncScheduleFromServer()
+        setHasSyncedInitialSchedule(true)
+      })()
   }, [subjects, hasSyncedInitialSchedule, syncScheduleFromServer])
 
   const handleDragStart = (e: React.DragEvent, section: Section) => {
@@ -200,7 +202,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
 
   const handleDrop = async (e: React.DragEvent, _dropDay: string, _dropPeriod: number) => {
     e.preventDefault()
-    
+
     if (!draggedSection) {
       return
     }
@@ -240,14 +242,14 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     const conflicts: Array<{ day: string; period: number }> = []
     for (const m of draggedSection.meetings) {
       const endP = m.period + m.length - 1
-      
+
       // Check boundary
       if (m.period < 1 || endP > periods.length) {
         toast.error(`Lịch học vượt quá giới hạn: ${m.day} tiết ${m.period}-${endP}`)
         setDraggedSection(null)
         return
       }
-      
+
       // Check conflicts
       const dayMap = schedule[m.day] ?? {}
       for (let p = m.period; p <= endP; p++) {
@@ -273,22 +275,23 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     const newSchedule: typeof schedule = { ...schedule }
     const placedMeetings: string[] = []
     const sectionIdNum = Number(draggedSection.id)
-    
+
     for (const m of draggedSection.meetings) {
       const endP = m.period + m.length - 1
       const dayMap: Record<number, ScheduledCell> = { ...(newSchedule[m.day] ?? {}) }
-      
+
       // Place all periods for this meeting
       for (let p = m.period; p <= endP; p++) {
         dayMap[p] = {
           subject: subjectInfo,
           sectionId: draggedSection.id, // Store sectionId to track all cells of this section
+          sectionCode: draggedSection.classCode,
           color: getSubjectColor(draggedSection.subjectCode),
           isHead: p === m.period,
           length: p === m.period ? m.length : 0,
         }
       }
-      
+
       newSchedule[m.day] = dayMap
       placedMeetings.push(`${m.day} tiết ${m.period}-${endP}`)
     }
@@ -304,7 +307,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     setRegisteringSectionIds(prev => new Set(prev).add(sectionIdNum))
     try {
       await registerSection(sectionIdNum)
-      
+
       // Show success message with meeting details
       if (placedMeetings.length > 1) {
         toast.success(
@@ -322,7 +325,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
       if (!registeredSubjects.includes(subjectCode)) {
         onUpdateRegisteredSubjects(registeredSubjects.filter(code => code !== subjectCode))
       }
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Đăng ký lớp học phần thất bại'
       toast.error(errorMessage)
     } finally {
@@ -384,17 +387,17 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
       const len = headCell.isHead ? headCell.length : 1
       const newSchedule = { ...schedule }
       const newDayMap: Record<number, ScheduledCell> = { ...(newSchedule[day] ?? {}) }
-      
+
       for (let p = headPeriod; p < headPeriod + len; p++) {
         delete newDayMap[p]
       }
-      
+
       if (Object.keys(newDayMap).length === 0) {
         delete newSchedule[day]
       } else {
         newSchedule[day] = newDayMap
       }
-      
+
       setSchedule(newSchedule)
       onUpdateRegisteredSubjects(registeredSubjects.filter(code => code !== subjectCodeToRemove))
       return
@@ -415,7 +418,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
       for (const periodKey of Object.keys(dayMap)) {
         const periodNum = Number(periodKey)
         const cellToCheck = dayMap[periodNum]
-        
+
         if (cellToCheck && cellToCheck.sectionId === sectionIdToRemove) {
           // Skip this cell (remove it)
           dayHasChanges = true
@@ -496,23 +499,23 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
   return (
     <div className="space-y-6">
       {/* Summary */}
-      <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+      <Card className="bg-gradient-to-r from-white-50 border-green-200">
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-green-900">Đăng ký bằng kéo thả</h3>
-              <p className="text-green-700">Kéo các môn học vào thời khóa biểu</p>
+              <p className="text-black">Kéo các môn học vào thời khóa biểu</p>
             </div>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-black">
               {getRegisteredCredits()} tín chỉ
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Available Subjects */}
-          <Card>
+        <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
@@ -520,13 +523,13 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
             </CardTitle>
           </CardHeader>
           <CardContent>
-              <div className="space-y-3">
-                {subjects.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>Không có môn học nào</p>
-                  </div>
-                ) : (
-                  subjects.map((subject) => {
+            <div className="space-y-3">
+              {subjects.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Không có môn học nào</p>
+                </div>
+              ) : (
+                subjects.map((subject) => {
                   const sections = sectionsBySubject[subject.code] ?? []
                   return (
                     <div key={subject.code} className={`rounded-lg border p-3 ${getSubjectColor(subject.code)}`}>
@@ -535,10 +538,10 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                         <div className="flex-1">
                           <div className="font-medium text-sm">{subject.name}</div>
                           <div className="text-xs opacity-80">{subject.code} • {subject.credits} tín chỉ</div>
-                          <Badge variant="outline" className="text-xs mt-1">{subject.type}</Badge>
+                          {/* <Badge variant="outline" className="text-xs mt-1">{subject.type}</Badge> */}
                         </div>
                         <button
-                          className="inline-flex items-center h-8 px-2 text-xs rounded border bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-full border bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                           disabled={loadingSubject === subject.code}
                           onClick={async () => {
                             if (sectionsBySubject[subject.code]) {
@@ -550,7 +553,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                               })
                               return
                             }
-                            
+
                             setLoadingSubject(subject.code)
                             try {
                               const apiSectionsData = await getCourseSections(subject.courseId)
@@ -559,7 +562,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                                 mapApiSectionToSection(apiSection, subject.code)
                               )
                               setSectionsBySubject((prev) => ({ ...prev, [subject.code]: mappedSections }))
-                              
+
                               if (mappedSections.length === 0) {
                                 toast.info('Không có lớp học phần nào cho môn học này')
                               }
@@ -570,18 +573,14 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                               setLoadingSubject(null)
                             }
                           }}
+                          title={sectionsBySubject[subject.code] ? 'Ẩn nhóm học phần' : 'Xem nhóm học phần'}
                         >
                           {loadingSubject === subject.code ? (
-                            <>
-                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                              Đang tải...
-                            </>
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : sectionsBySubject[subject.code] ? (
-                            'Ẩn nhóm học phần'
+                            <ChevronDown className="h-4 w-4 rotate-180 transition-transform" />
                           ) : (
-                            <>
-                              Xem nhóm học phần <ChevronDown className="ml-1 h-3 w-3" />
-                            </>
+                            <ChevronDown className="h-4 w-4 transition-transform" />
                           )}
                         </button>
                       </div>
@@ -590,45 +589,58 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                           {sections.map((sec) => {
                             const sectionIdNum = Number(sec.id)
                             const isRegistering = registeringSectionIds.has(sectionIdNum)
-                            const isRegistered = Object.values(schedule).some(dayMap => 
+                            const isRegistered = Object.values(schedule).some(dayMap =>
                               Object.values(dayMap || {}).some(cell => cell?.sectionId === sec.id)
                             )
-                            
+
                             return (
                               <div
                                 key={sec.id}
                                 draggable={!isRegistering && !isRegistered}
                                 onDragStart={(e) => !isRegistering && !isRegistered && handleDragStart(e, sec)}
-                                className={`p-2 rounded border bg-white transition-opacity ${
-                                  isRegistering || isRegistered 
-                                    ? 'opacity-60 cursor-not-allowed' 
-                                    : 'cursor-grab active:cursor-grabbing'
-                                }`}
+                                className={`p-2 rounded border bg-white transition-opacity space-y-1 ${isRegistering || isRegistered
+                                  ? 'opacity-60 cursor-not-allowed'
+                                  : 'cursor-grab active:cursor-grabbing'
+                                  }`}
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="text-sm font-medium">{sec.classCode}</div>
+                                {/* Mã */}
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs font-semibold">{sec.classCode}</span>
                                   {isRegistering && (
                                     <Loader2 className="h-3 w-3 animate-spin text-primary" />
                                   )}
-                                  {isRegistered && !isRegistering && (
-                                    <Badge variant="outline" className="text-xs bg-green-100 text-green-800">
-                                      Đã đăng ký
-                                    </Badge>
-                                  )}
                                 </div>
-                                <div className="text-base opacity-80 font-medium">{sec.teacher} • {sec.room}</div>
-                                <div className="text-sm mt-1 text-muted-foreground font-medium">
+
+                                {/* Giáo viên */}
+                                <div className="text-[11px] text-gray-600">
+                                  GV: {sec.teacher}
+                                </div>
+
+                                {/* Phòng */}
+                                <div className="text-[11px] text-gray-600">
+                                  Phòng: {sec.room}
+                                </div>
+
+                                {/* Lịch học */}
+                                <div className="text-[11px] text-gray-600">
                                   {sec.meetings.map(m => `${m.day} tiết ${m.period}-${m.period + m.length - 1}`).join(' • ')}
                                 </div>
-                                <div className="text-[11px] text-blue-700 mt-1">
+
+                                {/* Trạng thái - Đẩy xuống dưới cùng */}
+                                <div className="pt-1 border-t">
                                   {isRegistering ? (
-                                    'Đang đăng ký...'
+                                    <span className="text-[10px] text-blue-600">Đang đăng ký...</span>
                                   ) : isRegistered ? (
-                                    'Đã được thêm vào thời khóa biểu'
-                                  ) : sec.meetings.length > 1 ? (
-                                    `Kéo vào ô trống bất kỳ - sẽ đặt vào ${sec.meetings.length} buổi học`
+                                    <Badge variant="outline" className="text-[10px] bg-green-100 text-green-800 px-2 py-0">
+                                      Đã đăng ký
+                                    </Badge>
                                   ) : (
-                                    `Kéo vào ${sec.meetings[0]?.day} tiết ${sec.meetings[0]?.period}`
+                                    <span className="text-[10px] text-gray-500 italic">
+                                      {sec.meetings.length > 1
+                                        ? `Kéo vào ô trống - ${sec.meetings.length} buổi học`
+                                        : `Kéo vào ${sec.meetings[0]?.day} tiết ${sec.meetings[0]?.period}`
+                                      }
+                                    </span>
                                   )}
                                 </div>
                               </div>
@@ -638,14 +650,14 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                       )}
                     </div>
                   )
-                  })
-                )}
-              </div>
+                })
+              )}
+            </div>
           </CardContent>
         </Card>
 
         {/* Schedule */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -653,77 +665,75 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
             </CardTitle>
           </CardHeader>
           <CardContent>
-              <div className="overflow-x-auto">
-                <div className="min-w-[600px]">
-                  {/* Header */}
-                  <div className="grid grid-cols-8 gap-2 mb-4">
-                    <div className="p-2 text-center font-medium text-sm text-muted-foreground">Tiết</div>
-                    {days.map(day => (
-                      <div key={day} className="p-2 text-center font-medium text-sm bg-muted/50 rounded">
-                        {day}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Period rows */}
-                  {periods.map(period => (
-                    <div key={period} className="grid grid-cols-8 gap-2 mb-2">
-                      <div className="p-2 text-center text-sm text-muted-foreground bg-muted/30 rounded">
-                        Tiết {period}
-                      </div>
-                      {days.map(day => {
-                        const cell = schedule[day]?.[period]
-                        const isDropZone = !cell
-                        return (
-                          <div
-                            key={`${day}-${period}`}
-                            className={`min-h-[60px] p-2 rounded border-2 transition-all duration-200 ${
-                              cell
-                                ? 'border-solid'
-                                : 'border-dashed border-muted-foreground/20 hover:border-primary/30 hover:bg-primary/5'
-                            }`}
-                            onDragOver={isDropZone ? handleDragOver : undefined}
-                            onDrop={isDropZone ? (e) => handleDrop(e, day, period) : undefined}
-                          >
-                            {cell ? (
-                              cell.isHead ? (
-                                <div className={`p-2 rounded text-xs ${cell.color}`}>
-                                  <div className="font-medium">{cell.subject.code}</div>
-                                  <div className="text-xs opacity-80 line-clamp-1">{cell.subject.name}</div>
-                                  <div className="text-[10px] opacity-70 mt-1">
-                                    Tiết {period}-{period + cell.length - 1}
-                                  </div>
-                                  <Button
-                                    size="sm"
-                                    variant="destructive"
-                                    className="w-full mt-1 h-5 text-xs"
-                                    onClick={() => removeFromSchedule(day, period)}
-                                    disabled={
-                                      !!cell.registrationId && removingRegistrationIds.has(cell.registrationId)
-                                    }
-                                  >
-                                    {cell.registrationId && removingRegistrationIds.has(cell.registrationId) ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      'Xóa'
-                                    )}
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-muted-foreground/60 text-center pt-2">...</div>
-                              )
-                            ) : (
-                              <div className="text-xs text-muted-foreground/50 text-center pt-2">
-                                {isDropZone ? 'Kéo vào đây' : ''}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
+            <div className="overflow-x-auto">
+              <div className="min-w-[600px]">
+                {/* Header */}
+                <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-2 mb-4">
+                  <div className="p-2 text-center font-medium text-sm text-muted-foreground">Tiết</div>
+                  {days.map(day => (
+                    <div key={day} className="p-2 text-center font-medium text-sm bg-muted/50 rounded">
+                      {day}
                     </div>
                   ))}
                 </div>
+
+                {/* Period rows */}
+                {periods.map(period => (
+                  <div key={period} className="grid grid-cols-[60px_repeat(7,1fr)] gap-2 mb-2">
+                    <div className="p-2 flex items-center justify-center text-sm text-muted-foreground bg-muted/30 rounded">
+                      Tiết {period}
+                    </div>
+                    {days.map(day => {
+                      const cell = schedule[day]?.[period]
+                      const isDropZone = !cell
+                      return (
+                        <div
+                          key={`${day}-${period}`}
+                          className={`min-h-[70px] p-2 rounded border-2 transition-all duration-200 ${cell
+                            ? 'border-solid'
+                            : 'border-dashed border-muted-foreground/20 hover:border-primary/30 hover:bg-primary/5'
+                            }`}
+                          onDragOver={isDropZone ? handleDragOver : undefined}
+                          onDrop={isDropZone ? (e) => handleDrop(e, day, period) : undefined}
+                        >
+                          {cell ? (
+                            cell.isHead ? (
+                              <div className={`relative p-3 rounded-lg shadow-sm ${cell.color} border transition-all hover:shadow-md flex items-center justify-center`}>
+                                <button
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md transition-all hover:scale-110 z-20"
+                                  onClick={() => removeFromSchedule(day, period)}
+                                  disabled={
+                                    !!cell.registrationId && removingRegistrationIds.has(cell.registrationId)
+                                  }
+                                  title="Xóa môn học"
+                                >
+                                  {cell.registrationId && removingRegistrationIds.has(cell.registrationId) ? (
+                                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                  ) : (
+                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                  )}
+                                </button>
+                                <div className="font-bold text-sm !text-gray-900 text-center drop-shadow-sm">
+                                  {cell.sectionCode || `${cell.subject.code} (no sectionCode)`}
+                                </div>
+                              </div>
+                            ) : (
+                              <div className={`p-3 rounded-lg shadow-sm ${cell.color} border min-h-[46px] transition-all`}></div>
+                            )
+                          ) : (
+                            <div className="text-xs text-muted-foreground/50 text-center pt-2">
+                              {isDropZone ? 'Kéo vào đây' : ''}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
+            </div>
           </CardContent>
         </Card>
       </div>
