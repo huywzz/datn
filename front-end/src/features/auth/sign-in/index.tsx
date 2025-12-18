@@ -19,11 +19,11 @@ export function SignIn() {
       <Card className='w-full max-w-md gap-4 shadow-lg'>
         <CardHeader>
           <CardTitle className='text-2xl font-semibold tracking-tight'>
-            Chào mừng trở lại
+            Đăng nhập
           </CardTitle>
-          <CardDescription>
+          {/* <CardDescription>
             Đăng nhập bằng email & mật khẩu hoặc tiếp tục với Google.
-          </CardDescription>
+          </CardDescription> */}
         </CardHeader>
         <CardContent className='space-y-6'>
           <UserAuthForm redirectTo={redirect} />
@@ -39,25 +39,6 @@ export function SignIn() {
           </div>
           <GoogleLoginButton redirectTo={redirect} />
         </CardContent>
-        <CardFooter>
-          <p className='text-muted-foreground w-full px-8 text-center text-sm'>
-            Bằng cách đăng nhập, bạn đồng ý với{' '}
-            <a
-              href='/terms'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              Điều khoản dịch vụ
-            </a>{' '}
-            và{' '}
-            <a
-              href='/privacy'
-              className='hover:text-primary underline underline-offset-4'
-            >
-              Chính sách bảo mật
-            </a>
-            .
-          </p>
-        </CardFooter>
       </Card>
     </AuthLayout>
   )

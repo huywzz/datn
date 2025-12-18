@@ -21,7 +21,6 @@ import { Route as CommonProfileRouteImport } from './routes/_common/profile'
 import { Route as CommonCourseRegistrationRouteImport } from './routes/_common/course-registration'
 import { Route as CommonClassesRouteImport } from './routes/_common/classes'
 import { Route as AuthenticatedStudentScheduleRouteImport } from './routes/_authenticated/student-schedule'
-import { Route as AuthenticatedCreditRegistrationScheduleRouteImport } from './routes/_authenticated/credit-registration-schedule'
 import { Route as AuthenticatedCreditRegistrationRouteImport } from './routes/_authenticated/credit-registration'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
@@ -119,12 +118,6 @@ const AuthenticatedStudentScheduleRoute =
   AuthenticatedStudentScheduleRouteImport.update({
     id: '/student-schedule',
     path: '/student-schedule',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedCreditRegistrationScheduleRoute =
-  AuthenticatedCreditRegistrationScheduleRouteImport.update({
-    id: '/credit-registration-schedule',
-    path: '/credit-registration-schedule',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCreditRegistrationRoute =
@@ -338,6 +331,7 @@ export interface FileRoutesByFullPath {
   '/clerk': typeof ClerkAuthenticatedRouteRouteWithChildren
   '/admin': typeof AuthenticatedAdminRouteRouteWithChildren
   '/settings': typeof CommonSettingsRoute
+  '/clerk/': typeof ClerkauthRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
   '/sign-in': typeof authSignInRoute
@@ -349,7 +343,6 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/credit-registration': typeof AuthenticatedCreditRegistrationRoute
-  '/credit-registration-schedule': typeof AuthenticatedCreditRegistrationScheduleRoute
   '/student-schedule': typeof AuthenticatedStudentScheduleRoute
   '/classes': typeof CommonClassesRoute
   '/course-registration': typeof CommonCourseRegistrationRoute
@@ -395,7 +388,6 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/credit-registration': typeof AuthenticatedCreditRegistrationRoute
-  '/credit-registration-schedule': typeof AuthenticatedCreditRegistrationScheduleRoute
   '/student-schedule': typeof AuthenticatedStudentScheduleRoute
   '/classes': typeof CommonClassesRoute
   '/course-registration': typeof CommonCourseRegistrationRoute
@@ -448,7 +440,6 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/credit-registration': typeof AuthenticatedCreditRegistrationRoute
-  '/_authenticated/credit-registration-schedule': typeof AuthenticatedCreditRegistrationScheduleRoute
   '/_authenticated/student-schedule': typeof AuthenticatedStudentScheduleRoute
   '/_common/classes': typeof CommonClassesRoute
   '/_common/course-registration': typeof CommonCourseRegistrationRoute
@@ -488,6 +479,7 @@ export interface FileRouteTypes {
     | '/clerk'
     | '/admin'
     | '/settings'
+    | '/clerk/'
     | '/forgot-password'
     | '/otp'
     | '/sign-in'
@@ -499,7 +491,6 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/credit-registration'
-    | '/credit-registration-schedule'
     | '/student-schedule'
     | '/classes'
     | '/course-registration'
@@ -545,7 +536,6 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/credit-registration'
-    | '/credit-registration-schedule'
     | '/student-schedule'
     | '/classes'
     | '/course-registration'
@@ -597,7 +587,6 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/credit-registration'
-    | '/_authenticated/credit-registration-schedule'
     | '/_authenticated/student-schedule'
     | '/_common/classes'
     | '/_common/course-registration'
@@ -734,13 +723,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStudentScheduleRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/credit-registration-schedule': {
-      id: '/_authenticated/credit-registration-schedule'
-      path: '/credit-registration-schedule'
-      fullPath: '/credit-registration-schedule'
-      preLoaderRoute: typeof AuthenticatedCreditRegistrationScheduleRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/credit-registration': {
       id: '/_authenticated/credit-registration'
       path: '/credit-registration'
@@ -827,8 +809,8 @@ declare module '@tanstack/react-router' {
     }
     '/clerk/(auth)': {
       id: '/clerk/(auth)'
-      path: ''
-      fullPath: '/clerk'
+      path: '/'
+      fullPath: '/clerk/'
       preLoaderRoute: typeof ClerkauthRouteRouteImport
       parentRoute: typeof ClerkRouteRoute
     }
@@ -1059,7 +1041,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRouteRoute: typeof AuthenticatedAdminRouteRouteWithChildren
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedCreditRegistrationRoute: typeof AuthenticatedCreditRegistrationRoute
-  AuthenticatedCreditRegistrationScheduleRoute: typeof AuthenticatedCreditRegistrationScheduleRoute
   AuthenticatedStudentScheduleRoute: typeof AuthenticatedStudentScheduleRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCoursesCourseIdRoute: typeof AuthenticatedCoursesCourseIdRoute
@@ -1079,8 +1060,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRouteRoute: AuthenticatedAdminRouteRouteWithChildren,
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedCreditRegistrationRoute: AuthenticatedCreditRegistrationRoute,
-  AuthenticatedCreditRegistrationScheduleRoute:
-    AuthenticatedCreditRegistrationScheduleRoute,
   AuthenticatedStudentScheduleRoute: AuthenticatedStudentScheduleRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCoursesCourseIdRoute: AuthenticatedCoursesCourseIdRoute,

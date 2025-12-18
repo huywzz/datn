@@ -44,6 +44,7 @@ const queryClient = new QueryClient({
           if (error.response?.status === 304) {
             toast.error('Content not modified!')
           }
+          // Note: 401 handling is in queryCache.onError below
         }
       },
     },

@@ -27,6 +27,30 @@ export type { ApiUser, Course, AvailableCourse, CourseSection, MyScheduleData, M
 
 const API_BASE_URL = 'http://localhost:3004'
 
+/**
+ * Helper function to handle API errors consistently
+ * For 401/403/500 errors, re-throws the original AxiosError to trigger global handlers
+ * For other errors, wraps with a custom message
+ */
+function handleApiError(error: unknown, defaultMessage: string): never {
+  if (error instanceof AxiosError) {
+    const status = error.response?.status
+    // For auth/server errors, throw original error to trigger global handlers
+    if (status === 401 || status === 403 || status === 500) {
+      throw error
+    }
+    
+    // For other errors, throw with custom message
+    throw new Error(
+      (error.response?.data as { message?: string; error?: string })?.message ||
+      (error.response?.data as { message?: string; error?: string })?.error ||
+      error.message ||
+      defaultMessage
+    )
+  }
+  throw error
+}
+
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -58,16 +82,7 @@ export async function loginWithGoogle(idToken: string): Promise<GoogleLoginRespo
     })
     return response.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      // Re-throw with more context
-      throw new Error(
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        error.message ||
-        'Đăng nhập thất bại'
-      )
-    }
-    throw error
+    handleApiError(error, 'Đăng nhập thất bại')
   }
 }
 
@@ -84,16 +99,7 @@ export async function loginWithCredentials(email: string, password: string) {
 
     return response.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Đăng nhập thất bại',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Đăng nhập thất bại')
   }
 }
 
@@ -107,16 +113,7 @@ export async function getAvailableCourses(): Promise<AvailableCourse[]> {
 
     return response.data.data || []
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách môn học',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Không thể tải danh sách môn học')
   }
 }
 
@@ -168,16 +165,7 @@ export async function getCourseSections(
       hasNext: false,
     }
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách lớp học phần',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Không thể tải danh sách lớp học phần')
   }
 }
 
@@ -193,16 +181,7 @@ export async function getCourseSectionDetail(sectionId: number): Promise<CourseS
 
     return response.data.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải thông tin lớp học phần',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Không thể tải thông tin lớp học phần')
   }
 }
 
@@ -261,16 +240,7 @@ export async function searchCourseSections(
       hasNext: false,
     }
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tìm kiếm lớp học phần',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Không thể tìm kiếm lớp học phần')
   }
 }
 
@@ -284,16 +254,7 @@ export async function getCourseDetails(courseId: number): Promise<Course> {
 
     return response.data.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải thông tin môn học',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Không thể tải thông tin môn học')
   }
 }
 
@@ -311,16 +272,7 @@ export async function getMySchedule(): Promise<MyScheduleData> {
 
     return response.data.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải thời khóa biểu',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Không thể tải thời khóa biểu')
   }
 }
 
@@ -340,15 +292,7 @@ export async function getSectionOfStudent(): Promise<CourseSection[]> {
     // Direct array response
     return Array.isArray(response.data) ? response.data : []
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách lớp học phần',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tải danh sách lớp học phần')
   }
 }
 
@@ -370,16 +314,7 @@ export async function registerSection(
 
     return response.data.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Đăng ký lớp học phần thất bại',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Đăng ký lớp học phần thất bại')
   }
 }
 
@@ -393,15 +328,7 @@ export async function createCourseRegistrationPeriod(
     )
     return response.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Tạo đợt đăng ký tín chỉ thất bại'
-      )
-    }
-    throw error
+    handleApiError(error, 'Tạo đợt đăng ký tín chỉ thất bại')
   }
 }
 
@@ -464,15 +391,7 @@ export async function createExchangeTransaction(
     // Direct object response
     return response.data as ExchangeTransaction
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tạo yêu cầu đổi lớp',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tạo yêu cầu đổi lớp')
   }
 }
 
@@ -492,15 +411,7 @@ export async function getMyExchangeTransactions(): Promise<ExchangeTransaction[]
     // Direct array response
     return Array.isArray(response.data) ? response.data : []
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách yêu cầu đổi lớp',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tải danh sách yêu cầu đổi lớp')
   }
 }
 
@@ -520,15 +431,7 @@ export async function getAllExchangeTransactions(): Promise<ExchangeTransaction[
     // Direct array response
     return Array.isArray(response.data) ? response.data : []
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách yêu cầu đổi lớp',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tải danh sách yêu cầu đổi lớp')
   }
 }
 
@@ -536,15 +439,7 @@ export async function deleteExchangeTransaction(transactionId: number): Promise<
   try {
     await api.delete(`/exchange-transactions/${transactionId}`)
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Xóa yêu cầu đổi lớp thất bại',
-      )
-    }
-    throw error
+    handleApiError(error, 'Xóa yêu cầu đổi lớp thất bại')
   }
 }
 
@@ -552,16 +447,7 @@ export async function deleteRegistration(registrationId: number): Promise<void> 
   try {
     await api.delete(`/registrations/${registrationId}`)
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-          (error.response?.data as { message?: string; error?: string })?.error ||
-          error.message ||
-          'Hủy đăng ký lớp học phần thất bại',
-      )
-    }
-
-    throw error
+    handleApiError(error, 'Hủy đăng ký lớp học phần thất bại')
   }
 }
 
@@ -576,15 +462,7 @@ export async function createCohortRegistrationSchedule(
     )
     return response.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Tạo lịch đăng ký thất bại'
-      )
-    }
-    throw error
+    handleApiError(error, 'Tạo lịch đăng ký thất bại')
   }
 }
 
@@ -610,15 +488,7 @@ export async function importTemporary(
     )
     return response.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Import dữ liệu thất bại'
-      )
-    }
-    throw error
+    handleApiError(error, 'Import dữ liệu thất bại')
   }
 }
 
@@ -644,15 +514,7 @@ export async function importCourseSections(
     )
     return response.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Import lớp học phần thất bại'
-      )
-    }
-    throw error
+    handleApiError(error, 'Import lớp học phần thất bại')
   }
 }
 
@@ -680,15 +542,7 @@ export async function getCourses(params?: GetCoursesParams): Promise<import('./i
     }
     return response.data.data
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách môn học',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tải danh sách môn học')
   }
 }
 
@@ -700,15 +554,7 @@ export async function getSemesters(): Promise<Semester[]> {
     }
     return response.data.data || []
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách học kỳ',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tải danh sách học kỳ')
   }
 }
 
@@ -720,15 +566,7 @@ export async function getCohorts(): Promise<Cohort[]> {
     }
     return response.data.data || []
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách khóa học',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tải danh sách khóa học')
   }
 }
 
@@ -745,15 +583,7 @@ export async function searchStudents(params: {
     }
     return response.data.data || []
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tìm kiếm sinh viên',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tìm kiếm sinh viên')
   }
 }
 
@@ -804,15 +634,7 @@ export async function getSectionStudents(
       hasNext: false,
     }
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể tải danh sách sinh viên',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể tải danh sách sinh viên')
   }
 }
 
@@ -820,14 +642,6 @@ export async function deleteSectionStudent(sectionId: number, registrationId: nu
   try {
     await api.delete(`/course-sections/${sectionId}/students/${registrationId}`)
   } catch (error) {
-    if (error instanceof AxiosError) {
-      throw new Error(
-        (error.response?.data as { message?: string; error?: string })?.message ||
-        (error.response?.data as { message?: string; error?: string })?.error ||
-        error.message ||
-        'Không thể xóa sinh viên khỏi lớp học phần',
-      )
-    }
-    throw error
+    handleApiError(error, 'Không thể xóa sinh viên khỏi lớp học phần')
   }
 }

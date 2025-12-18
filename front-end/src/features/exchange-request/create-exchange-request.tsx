@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useEffect, useState } from 'react'
 import { Plus, Trash2, Loader2, ArrowLeft } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import {
   createExchangeTransaction,
   getSectionOfStudent,
@@ -50,9 +51,14 @@ export function CreateExchangeRequestPage() {
         const sections = Array.isArray(sectionsData) ? sectionsData : []
         console.log('Loaded sections:', sections.length, sections)
         setMySections(sections)
+        
+        // Show toast if no courses registered
+        if (sections.length === 0) {
+          toast.warning('Bạn chưa đăng ký môn học nào')
+        }
       } catch (error) {
         console.error('Error loading data:', error)
-        alert('Không thể tải dữ liệu lớp học phần.')
+        toast.error('Không thể tải dữ liệu lớp học phần')
       } finally {
         setIsLoading(false)
       }
@@ -111,7 +117,7 @@ export function CreateExchangeRequestPage() {
     console.log('Valid items:', validItems)
     
     if (validItems.length === 0) {
-      alert('Vui lòng chọn lớp học phần cho ít nhất một môn học')
+      toast.error('Vui lòng chọn lớp học phần cho ít nhất một môn học')
       return
     }
 
@@ -138,12 +144,12 @@ export function CreateExchangeRequestPage() {
         status: 'pending',
       })
 
-      alert('Tạo yêu cầu đổi lớp thành công')
+      toast.success('Tạo yêu cầu đổi lớp thành công')
       // Navigate back to list page
       void navigate({ to: '/exchange-request' })
     } catch (error) {
       console.error(error)
-      alert(error instanceof Error ? error.message : 'Tạo yêu cầu đổi lớp thất bại')
+      toast.error(error instanceof Error ? error.message : 'Tạo yêu cầu đổi lớp thất bại')
     } finally {
       setIsSubmitting(false)
     }
@@ -205,8 +211,9 @@ export function CreateExchangeRequestPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleAddItem}
-                      disabled={isLoading}
+                      disabled={isLoading || mySections.length === 0}
                       className="gap-2"
+                      title={mySections.length === 0 ? 'Bạn chưa đăng ký môn học nào' : undefined}
                     >
                       <Plus className="w-4 h-4" />
                       Thêm môn học
@@ -275,14 +282,10 @@ export function CreateExchangeRequestPage() {
                                     />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {isLoading ? (
-                                      <SelectItem value="" disabled>
-                                        Đang tải dữ liệu...
-                                      </SelectItem>
-                                    ) : sectionsToShow.length === 0 ? (
-                                      <SelectItem value="" disabled>
-                                        Không có lớp học phần nào
-                                      </SelectItem>
+                                    {sectionsToShow.length === 0 ? (
+                                      <div className="p-2 text-sm text-muted-foreground text-center">
+                                        {isLoading ? 'Đang tải dữ liệu...' : 'Không có lớp học phần nào'}
+                                      </div>
                                     ) : (
                                       sectionsToShow
                                         .filter((sec) => {

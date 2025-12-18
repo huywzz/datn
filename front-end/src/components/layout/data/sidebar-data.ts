@@ -4,8 +4,6 @@ import {
   GalleryVerticalEnd,
   BookOpen,
   CalendarCheck,
-  List,
-  Calendar,
   ArrowLeftRight,
   Inbox,
   Users,
@@ -59,19 +57,8 @@ export const sidebarData: SidebarData = {
       items: [
         {
           title: 'Đăng ký tín chỉ',
+          url: '/credit-registration',
           icon: BookOpen,
-          items: [
-            {
-              title: 'Đăng ký theo danh sách',
-              url: '/credit-registration',
-              icon: List,
-            },
-            {
-              title: 'Đăng ký với thời khóa biểu',
-              url: '/credit-registration-schedule',
-              icon: Calendar,
-            },
-          ],
         },
         {
           title: 'Thời khóa biểu tạm thời',
