@@ -72,54 +72,54 @@ export class ExchangeTransactionController {
     return { message: 'Exchange transaction deleted successfully' };
   }
 
-  @Post('queue/process')
-  // @UseGuards(RoleGuard(UserRole.ADMIN))
-  @ApiOperation({ summary: 'Manually trigger queue processing (Admin only)' })
-  @ApiResponse({ status: 200, description: 'Queue processing triggered' })
-  async triggerQueueProcessing(): Promise<{ message: string }> {
-    return await this.processorService.triggerProcessing();
-  }
-
-  @Get('queue/info')
-  // @UseGuards(RoleGuard(UserRole.ADMIN))
-  @ApiOperation({ summary: 'Get queue information' })
-  @ApiResponse({ status: 200, description: 'Queue information' })
-  async getQueueInfo(): Promise<{
-    size: number;
-    transactionIds: number[];
-    isProcessing: boolean;
-  }> {
-    return await this.processorService.getQueueInfo();
-  }
-
-  @Post(':id/execute-single')
-  // @UseGuards(RoleGuard(UserRole.ADMIN))
-  @ApiOperation({ summary: 'Execute a single exchange transaction' })
-  @ApiResponse({ status: 200, description: 'Transaction executed successfully' })
-  async executeSingleTransaction(@Param('id', ParseIntPipe) id: number): Promise<{
-    success: boolean;
-    message: string;
-    transaction: ExchangeTransaction;
-  }> {
-    return await this.exchangeTransactionService.executeSingleTransaction(id);
-  }
-
-  @Post('execute-pair')
-  // @UseGuards(RoleGuard(UserRole.ADMIN))
-  @ApiOperation({ summary: 'Execute two exchange transactions together' })
-  @ApiResponse({ status: 200, description: 'Transactions executed successfully' })
-  async executeTransaction(
-    @Body() body: { transaction1Id: number; transaction2Id: number },
-  ): Promise<{
-    success: boolean;
-    message: string;
-    transaction1: ExchangeTransaction;
-    transaction2: ExchangeTransaction;
-  }> {
-    return await this.exchangeTransactionService.executeTransaction(
-      body.transaction1Id,
-      body.transaction2Id,
-    );
-  }
+  // @Post('queue/process')
+  // // @UseGuards(RoleGuard(UserRole.ADMIN))
+  // @ApiOperation({ summary: 'Manually trigger queue processing (Admin only)' })
+  // @ApiResponse({ status: 200, description: 'Queue processing triggered' })
+  // async triggerQueueProcessing(): Promise<{ message: string }> {
+  //   return await this.processorService.triggerProcessing();
+  // }
+  //
+  // @Get('queue/info')
+  // // @UseGuards(RoleGuard(UserRole.ADMIN))
+  // @ApiOperation({ summary: 'Get queue information' })
+  // @ApiResponse({ status: 200, description: 'Queue information' })
+  // async getQueueInfo(): Promise<{
+  //   size: number;
+  //   transactionIds: number[];
+  //   isProcessing: boolean;
+  // }> {
+  //   return await this.processorService.getQueueInfo();
+  // }
+  //
+  // @Post(':id/execute-single')
+  // // @UseGuards(RoleGuard(UserRole.ADMIN))
+  // @ApiOperation({ summary: 'Execute a single exchange transaction' })
+  // @ApiResponse({ status: 200, description: 'Transaction executed successfully' })
+  // async executeSingleTransaction(@Param('id', ParseIntPipe) id: number): Promise<{
+  //   success: boolean;
+  //   message: string;
+  //   transaction: ExchangeTransaction;
+  // }> {
+  //   return await this.exchangeTransactionService.executeSingleTransaction(id);
+  // }
+  //
+  // @Post('execute-pair')
+  // // @UseGuards(RoleGuard(UserRole.ADMIN))
+  // @ApiOperation({ summary: 'Execute two exchange transactions together' })
+  // @ApiResponse({ status: 200, description: 'Transactions executed successfully' })
+  // async executeTransaction(
+  //   @Body() body: { transaction1Id: number; transaction2Id: number },
+  // ): Promise<{
+  //   success: boolean;
+  //   message: string;
+  //   transaction1: ExchangeTransaction;
+  //   transaction2: ExchangeTransaction;
+  // }> {
+  //   return await this.exchangeTransactionService.executeTransaction(
+  //     body.transaction1Id,
+  //     body.transaction2Id,
+  //   );
+  // }
 }
 
