@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Plus, Trash2, Loader2, ArrowLeft } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import {
   createExchangeTransaction,
   getSectionOfStudent,
@@ -81,7 +82,7 @@ export function CreateExchangeRequestPage() {
         
       } catch (error) {
         console.error('Error loading data:', error)
-        alert('Không thể tải dữ liệu lớp học phần.')
+        toast.error('Không thể tải dữ liệu lớp học phần.')
       } finally {
         setIsLoading(false)
       }
@@ -173,7 +174,7 @@ export function CreateExchangeRequestPage() {
     // Validate: Kiểm tra có items không
     if (!currentItems || currentItems.length === 0) {
       console.warn('No items found')
-      alert('Vui lòng thêm ít nhất một môn học')
+      toast.error('Vui lòng thêm ít nhất một môn học')
       return
     }
     
@@ -227,7 +228,7 @@ export function CreateExchangeRequestPage() {
     
     if (validItems.length === 0) {
       console.error('No valid items found')
-      alert('Vui lòng chọn lớp học phần cho ít nhất một môn học')
+      toast.error('Vui lòng chọn lớp học phần cho ít nhất một môn học')
       return
     }
 
@@ -270,12 +271,12 @@ export function CreateExchangeRequestPage() {
       })
 
       console.log('Create exchange transaction success:', result)
-      alert('Tạo yêu cầu đổi lớp thành công')
+      toast.success('Tạo yêu cầu đổi lớp thành công')
       // Navigate back to list page
       void navigate({ to: '/exchange-request' })
     } catch (error) {
       console.error('Create exchange transaction error:', error)
-      alert(error instanceof Error ? error.message : 'Tạo yêu cầu đổi lớp thất bại')
+      toast.error(error instanceof Error ? error.message : 'Tạo yêu cầu đổi lớp thất bại')
     } finally {
       setIsSubmitting(false)
     }
