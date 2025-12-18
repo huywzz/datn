@@ -6,6 +6,10 @@ import { RedisProviderService } from '../../../provider/redis/redis-provider.ser
 import Redis from 'ioredis';
 import * as crypto from 'crypto';
 
+interface FindOneWithCacheOptions extends FindOneOptions<CourseSection> {
+  isCache?: boolean;
+}
+
 @Injectable()
 export class CourseSectionRepository extends Repository<CourseSection> {
   private redis: Redis;
@@ -123,7 +127,11 @@ export class CourseSectionRepository extends Repository<CourseSection> {
    * Override findOne với cache hỗ trợ đầy đủ FindOptions
    * Tự động lấy số lượng sinh viên đã đăng ký từ Redis và inject vào currentStudents
    */
-  async findOne(options?: FindOneOptions<CourseSection>): Promise<CourseSection | null> {
+  async findOne(options?: FindOneWithCacheOptions): Promise<CourseSection | null> {
+    if (!(options?.isCache ?? true)) {
+      return await super.findOne(options ?? {});
+    }
+
     const cacheKey = this.generateCacheKey(options);
 
     // 1️⃣ Check cache
@@ -185,7 +193,7 @@ export class CourseSectionRepository extends Repository<CourseSection> {
    * - Key: course-section:conflict:{minId}:{maxId}
    * - Value: '1' | '0'
    */
-  async hasScheduleConflictCached(
+  async hasScheduleConflict(
     a: CourseSection,
     b: CourseSection,
   ): Promise<boolean> {

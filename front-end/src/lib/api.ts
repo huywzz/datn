@@ -244,6 +244,34 @@ export async function searchCourseSections(
   }
 }
 
+export async function getAllCourseSections(): Promise<CourseSection[]> {
+  try {
+    const response = await api.get<CourseSection[] | { success: boolean; data?: CourseSection[]; message?: string }>('/course-sections')
+    
+    // Check if response has wrapper format
+    if (response.data && typeof response.data === 'object' && 'success' in response.data) {
+      const wrappedResponse = response.data as { success: boolean; data?: CourseSection[]; message?: string }
+      if (!wrappedResponse.success) {
+        throw new Error(wrappedResponse.message || 'Không thể tải danh sách lớp học phần.')
+      }
+      return wrappedResponse.data || []
+    }
+    
+    // Direct array response
+    return Array.isArray(response.data) ? response.data : []
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new Error(
+        (error.response?.data as { message?: string; error?: string })?.message ||
+        (error.response?.data as { message?: string; error?: string })?.error ||
+        error.message ||
+        'Không thể tải danh sách lớp học phần',
+      )
+    }
+    throw error
+  }
+}
+
 export async function getCourseDetails(courseId: number): Promise<Course> {
   try {
     const response = await api.get<{ success: boolean; data: Course }>(`/courses/${courseId}`)

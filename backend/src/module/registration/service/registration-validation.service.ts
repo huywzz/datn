@@ -102,7 +102,7 @@ export class RegistrationValidationService {
 
     // Kiểm tra từng section đã đăng ký với section mới, dùng cache conflict
     for (const registeredSection of registeredSections) {
-      const hasConflict = await this.courseSectionRepository.hasScheduleConflictCached(
+      const hasConflict = await this.courseSectionRepository.hasScheduleConflict(
         newSection,
         registeredSection,
       );

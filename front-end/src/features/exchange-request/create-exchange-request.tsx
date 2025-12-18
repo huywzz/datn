@@ -5,13 +5,13 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Plus, Trash2, Loader2, ArrowLeft } from 'lucide-react'
 import { useNavigate } from '@tanstack/react-router'
-import { toast } from 'sonner'
 import {
   createExchangeTransaction,
   getSectionOfStudent,
+  getAllCourseSections,
   type ExchangeAction,
 } from '@/lib/api'
 import type { CourseSection } from '@/lib/interface'
@@ -38,27 +38,50 @@ type ExchangeItem = {
 
 export function CreateExchangeRequestPage() {
   const navigate = useNavigate()
-  const [mySections, setMySections] = useState<CourseSection[]>([])
+  const [allSections, setAllSections] = useState<CourseSection[]>([]) // Tất cả các lớp học phần
+  const [registeredSectionIds, setRegisteredSectionIds] = useState<Set<number>>(new Set()) // ID các lớp đã đăng ký
   const [items, setItems] = useState<ExchangeItem[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  // Sử dụng ref để đảm bảo luôn có state mới nhất khi submit
+  const itemsRef = useRef<ExchangeItem[]>([])
+  // Thêm một state để force re-render khi cần
+  const [updateTrigger, setUpdateTrigger] = useState(0)
+  
+  // Đồng bộ ref với state và log để debug
+  useEffect(() => {
+    itemsRef.current = items
+    console.log('Items state updated:', JSON.stringify(items, null, 2))
+    console.log('Items ref updated:', JSON.stringify(itemsRef.current, null, 2))
+  }, [items])
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true)
-        const sectionsData = await getSectionOfStudent()
-        const sections = Array.isArray(sectionsData) ? sectionsData : []
-        console.log('Loaded sections:', sections.length, sections)
-        setMySections(sections)
         
-        // Show toast if no courses registered
-        if (sections.length === 0) {
-          toast.warning('Bạn chưa đăng ký môn học nào')
-        }
+        // Load tất cả các lớp học phần
+        const allSectionsList = await getAllCourseSections()
+        console.log('Loaded all sections:', allSectionsList.length)
+        setAllSections(allSectionsList)
+        
+        // Load các lớp học phần đã đăng ký
+        const registeredSectionsData = await getSectionOfStudent()
+        const registeredSections = Array.isArray(registeredSectionsData) ? registeredSectionsData : []
+        console.log('Loaded registered sections:', registeredSections.length)
+        
+        // Tạo Set các ID đã đăng ký để dễ check
+        const registeredIds = new Set<number>()
+        registeredSections.forEach((sec) => {
+          if (sec.sectionId) {
+            registeredIds.add(typeof sec.sectionId === 'number' ? sec.sectionId : Number(sec.sectionId))
+          }
+        })
+        setRegisteredSectionIds(registeredIds)
+        
       } catch (error) {
         console.error('Error loading data:', error)
-        toast.error('Không thể tải dữ liệu lớp học phần')
+        alert('Không thể tải dữ liệu lớp học phần.')
       } finally {
         setIsLoading(false)
       }
@@ -67,93 +90,196 @@ export function CreateExchangeRequestPage() {
     void loadData()
   }, [])
 
-  const handleAddItem = () => {
-    setItems((prev) => [
-      ...prev,
-      {
+  const handleAddItem = useCallback(() => {
+    setItems((prev) => {
+      const newItem: ExchangeItem = {
         id: `item-${Date.now()}-${Math.random()}`,
         action: 'ADD',
         sectionId: '',
         note: '',
-      },
-    ])
-  }
+      }
+      return [...prev, newItem]
+    })
+  }, [])
 
-  const handleRemoveItem = (itemId: string) => {
+  const handleRemoveItem = useCallback((itemId: string) => {
     setItems((prev) => prev.filter((item) => item.id !== itemId))
-  }
+  }, [])
 
-  const loadMySections = async () => {
+  const loadAllSections = useCallback(async () => {
     try {
-      const sectionsData = await getSectionOfStudent()
-      setMySections(Array.isArray(sectionsData) ? sectionsData : [])
+      // Load lại tất cả các lớp học phần
+      const allSectionsList = await getAllCourseSections()
+      setAllSections(allSectionsList)
+      
+      // Load lại các lớp đã đăng ký
+      const registeredSectionsData = await getSectionOfStudent()
+      const registeredSections = Array.isArray(registeredSectionsData) ? registeredSectionsData : []
+      
+      const registeredIds = new Set<number>()
+      registeredSections.forEach((sec) => {
+        if (sec.sectionId) {
+          registeredIds.add(typeof sec.sectionId === 'number' ? sec.sectionId : Number(sec.sectionId))
+        }
+      })
+      setRegisteredSectionIds(registeredIds)
     } catch (error) {
       console.error('Không thể tải danh sách lớp học phần:', error)
     }
-  }
+  }, [])
 
-  const handleUpdateItem = (itemId: string, updates: Partial<ExchangeItem>) => {
+  const handleUpdateItem = useCallback((itemId: string, updates: Partial<ExchangeItem>) => {
+    console.log('handleUpdateItem called:', { itemId, updates })
+    
     // Load lại sections từ API khi action thay đổi để đảm bảo data luôn mới nhất
     if (updates.action !== undefined) {
-      void loadMySections()
+      void loadAllSections()
     }
     
-    setItems((prev) =>
-      prev.map((item) => (item.id === itemId ? { ...item, ...updates } : item)),
-    )
-  }
+    setItems((prev) => {
+      const updated = prev.map((item) => {
+        if (item.id === itemId) {
+          const updatedItem = { ...item, ...updates }
+          // Đảm bảo sectionId là string (giữ nguyên giá trị nếu đã có)
+          if (updatedItem.sectionId !== undefined && updatedItem.sectionId !== null) {
+            updatedItem.sectionId = String(updatedItem.sectionId)
+          }
+          console.log('Updated item:', JSON.stringify(updatedItem, null, 2))
+          return updatedItem
+        }
+        return item
+      })
+      console.log('Updated items array:', JSON.stringify(updated, null, 2))
+      // Force update trigger để đảm bảo re-render
+      setUpdateTrigger(prev => prev + 1)
+      return updated
+    })
+  }, [loadAllSections])
 
-  const handleCreateRequest = async () => {
-    // Chỉ lấy những items có sectionId hợp lệ
-    const validItems = items.filter((item) => {
-      const hasSectionId = item.sectionId && item.sectionId.trim() !== ''
-      if (!hasSectionId) {
-        console.log('Item without sectionId:', item)
+  const handleCreateRequest = useCallback(async () => {
+    // Sử dụng cả state và ref để đảm bảo có dữ liệu mới nhất
+    // Đợi một chút để đảm bảo state đã được cập nhật
+    await new Promise(resolve => setTimeout(resolve, 50))
+    
+    // Lấy từ ref để đảm bảo có state mới nhất (ref luôn được sync với state)
+    const currentItems = itemsRef.current
+    
+    console.log('=== SUBMIT DEBUG ===')
+    console.log('Current items from ref:', JSON.stringify(currentItems, null, 2))
+    console.log('Current items from state:', JSON.stringify(items, null, 2))
+    console.log('Items count from ref:', currentItems?.length)
+    console.log('Items count from state:', items.length)
+    
+    // Validate: Kiểm tra có items không
+    if (!currentItems || currentItems.length === 0) {
+      console.warn('No items found')
+      alert('Vui lòng thêm ít nhất một môn học')
+      return
+    }
+    
+    // Chỉ lấy những items có sectionId hợp lệ và không rỗng
+    const validItems = currentItems.filter((item, index) => {
+      // Convert sectionId sang string và trim
+      const sectionIdStr = item.sectionId 
+        ? (typeof item.sectionId === 'string' ? item.sectionId : String(item.sectionId)).trim()
+        : ''
+      
+      console.log(`Checking item ${index + 1}:`, {
+        id: item.id,
+        sectionId: item.sectionId,
+        sectionIdType: typeof item.sectionId,
+        sectionIdStr,
+        sectionIdNumber: Number(sectionIdStr),
+        action: item.action,
+      })
+      
+      // Kiểm tra sectionId hợp lệ - phải là số dương
+      const sectionIdNum = Number(sectionIdStr)
+      const hasSectionId = sectionIdStr !== '' && 
+                          sectionIdStr !== 'undefined' && 
+                          sectionIdStr !== 'null' &&
+                          !isNaN(sectionIdNum) &&
+                          isFinite(sectionIdNum) &&
+                          sectionIdNum > 0
+      
+      // Kiểm tra action hợp lệ
+      const hasValidAction = item.action === 'ADD' || item.action === 'REMOVE'
+      
+      const isValid = hasSectionId && hasValidAction
+      
+      if (!isValid) {
+        console.warn(`Item ${index + 1} is invalid:`, {
+          hasSectionId,
+          hasValidAction,
+          sectionIdStr,
+          sectionIdNum,
+          action: item.action,
+          fullItem: item
+        })
       }
-      return hasSectionId
+      
+      return isValid
     })
     
-    console.log('All items:', items)
-    console.log('Valid items:', validItems)
+    console.log('All items:', JSON.stringify(currentItems, null, 2))
+    console.log('Valid items:', JSON.stringify(validItems, null, 2))
+    console.log('Valid items count:', validItems.length)
     
     if (validItems.length === 0) {
-      toast.error('Vui lòng chọn lớp học phần cho ít nhất một môn học')
+      console.error('No valid items found')
+      alert('Vui lòng chọn lớp học phần cho ít nhất một môn học')
       return
     }
 
-    const apiItems = validItems.map((item) => {
-      const sectionId = Number(item.sectionId)
-      console.log('Converting sectionId:', item.sectionId, 'to number:', sectionId)
-      if (!Number.isFinite(sectionId) || sectionId <= 0) {
-        throw new Error(`Section ID không hợp lệ: ${item.sectionId}`)
+    // Validate và chuyển đổi sang format API
+    const apiItems = validItems.map((item, index) => {
+      const sectionIdStr = String(item.sectionId).trim()
+      const sectionId = Number(sectionIdStr)
+      
+      console.log(`Item ${index + 1}:`, {
+        originalSectionId: item.sectionId,
+        sectionIdStr,
+        sectionId,
+        action: item.action,
+        note: item.note
+      })
+      
+      if (!Number.isFinite(sectionId) || sectionId <= 0 || isNaN(sectionId)) {
+        throw new Error(`Section ID không hợp lệ cho môn học #${index + 1}: ${item.sectionId}`)
       }
+      
+      if (item.action !== 'ADD' && item.action !== 'REMOVE') {
+        throw new Error(`Hành động không hợp lệ cho môn học #${index + 1}: ${item.action}`)
+      }
+      
       return {
         sectionId,
         action: item.action,
-        note: item.note || (item.action === 'REMOVE' ? 'Remove this section' : 'Add this section'),
+        note: item.note?.trim() || (item.action === 'REMOVE' ? 'Remove this section' : 'Add this section'),
       }
     })
     
-    console.log('API items to send:', apiItems)
+    console.log('API items to send:', JSON.stringify(apiItems, null, 2))
 
     try {
       setIsSubmitting(true)
-      await createExchangeTransaction({
+      const result = await createExchangeTransaction({
         items: apiItems,
         description: 'Exchange course sections',
         status: 'pending',
       })
 
-      toast.success('Tạo yêu cầu đổi lớp thành công')
+      console.log('Create exchange transaction success:', result)
+      alert('Tạo yêu cầu đổi lớp thành công')
       // Navigate back to list page
       void navigate({ to: '/exchange-request' })
     } catch (error) {
-      console.error(error)
-      toast.error(error instanceof Error ? error.message : 'Tạo yêu cầu đổi lớp thất bại')
+      console.error('Create exchange transaction error:', error)
+      alert(error instanceof Error ? error.message : 'Tạo yêu cầu đổi lớp thất bại')
     } finally {
       setIsSubmitting(false)
     }
-  }
+  }, [navigate, items])
 
   return (
     <>
@@ -211,9 +337,8 @@ export function CreateExchangeRequestPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleAddItem}
-                      disabled={isLoading || mySections.length === 0}
+                      disabled={isLoading}
                       className="gap-2"
-                      title={mySections.length === 0 ? 'Bạn chưa đăng ký môn học nào' : undefined}
                     >
                       <Plus className="w-4 h-4" />
                       Thêm môn học
@@ -230,8 +355,8 @@ export function CreateExchangeRequestPage() {
                   ) : (
                     <div className="space-y-4">
                       {items.map((item, index) => {
-                        // Luôn sử dụng mySections từ API registrations/section-of-student
-                        const sectionsToShow = mySections
+                        // Sử dụng tất cả các lớp học phần
+                        const sectionsToShow = allSections
                         const validSections = sectionsToShow.filter((sec) => sec.sectionCode && sec.sectionId)
                         console.log('sectionsToShow:', sectionsToShow.length, 'validSections:', validSections.length)
                         const selectedSection = sectionsToShow.find(
@@ -263,10 +388,24 @@ export function CreateExchangeRequestPage() {
                               <div className="space-y-2">
                                 <label className="text-sm font-semibold">Lớp học phần</label>
                                 <Select
-                                  value={item.sectionId || undefined}
+                                  key={`section-select-${item.id}-${updateTrigger}`}
+                                  value={item.sectionId && String(item.sectionId).trim() !== '' ? String(item.sectionId) : undefined}
                                   onValueChange={(value) => {
-                                    console.log('Selected sectionId:', value, 'Type:', typeof value)
-                                    handleUpdateItem(item.id, { sectionId: value })
+                                    console.log('=== SELECT CHANGE ===')
+                                    console.log('Selected value:', value, 'Type:', typeof value)
+                                    console.log('For item:', item.id)
+                                    console.log('Current item state:', JSON.stringify(item, null, 2))
+                                    
+                                    // Đảm bảo value là string hợp lệ
+                                    const sectionIdValue = String(value).trim()
+                                    
+                                    if (sectionIdValue && sectionIdValue !== 'undefined' && sectionIdValue !== 'null' && sectionIdValue !== '') {
+                                      console.log('Updating item with sectionId:', sectionIdValue)
+                                      // Cập nhật ngay lập tức không cần setTimeout
+                                      handleUpdateItem(item.id, { sectionId: sectionIdValue })
+                                    } else {
+                                      console.warn('Invalid sectionId value:', value)
+                                    }
                                   }}
                                   disabled={isLoading || sectionsToShow.length === 0}
                                 >
@@ -282,10 +421,14 @@ export function CreateExchangeRequestPage() {
                                     />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {sectionsToShow.length === 0 ? (
-                                      <div className="p-2 text-sm text-muted-foreground text-center">
-                                        {isLoading ? 'Đang tải dữ liệu...' : 'Không có lớp học phần nào'}
-                                      </div>
+                                    {isLoading ? (
+                                      <SelectItem value="" disabled>
+                                        Đang tải dữ liệu...
+                                      </SelectItem>
+                                    ) : sectionsToShow.length === 0 ? (
+                                      <SelectItem value="" disabled>
+                                        Không có lớp học phần nào
+                                      </SelectItem>
                                     ) : (
                                       sectionsToShow
                                         .filter((sec) => {
@@ -296,10 +439,13 @@ export function CreateExchangeRequestPage() {
                                           // Đảm bảo sectionId là number và hợp lệ
                                           const sectionId = typeof sec.sectionId === 'number' ? sec.sectionId : Number(sec.sectionId)
                                           
-                                          if (!Number.isFinite(sectionId)) {
+                                          if (!Number.isFinite(sectionId) || sectionId <= 0) {
                                             console.warn('Invalid sectionId:', sec.sectionId, sec)
                                             return null
                                           }
+                                          
+                                          // Kiểm tra xem lớp này đã được đăng ký chưa
+                                          const isRegistered = registeredSectionIds.has(sectionId)
                                           
                                           const schedules = sec.classSchedules || []
                                           const firstSchedule = schedules[0]
@@ -330,8 +476,17 @@ export function CreateExchangeRequestPage() {
                                             <SelectItem
                                               key={sectionId}
                                               value={sectionId.toString()}
+                                              className={isRegistered ? 'bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-300 font-medium hover:bg-green-100 dark:hover:bg-green-900/50' : ''}
                                             >
-                                              {displayText}
+                                              <span className="flex items-center gap-2 w-full">
+                                                {isRegistered && (
+                                                  <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+                                                )}
+                                                <span className="flex-1">{displayText}</span>
+                                                {isRegistered && (
+                                                  <span className="text-xs text-green-600 dark:text-green-400 font-normal flex-shrink-0">(Đã đăng ký)</span>
+                                                )}
+                                              </span>
                                             </SelectItem>
                                           )
                                         })
@@ -346,12 +501,13 @@ export function CreateExchangeRequestPage() {
                                 <label className="text-sm font-semibold">Hành động</label>
                                 <Select
                                   value={item.action}
-                                  onValueChange={(value) =>
+                                  onValueChange={(value) => {
+                                    console.log('Action changed to:', value, 'for item:', item.id)
+                                    // Chỉ cập nhật action, giữ nguyên sectionId đã chọn
                                     handleUpdateItem(item.id, {
                                       action: value as ExchangeAction,
-                                      sectionId: '', // Reset section when action changes
                                     })
-                                  }
+                                  }}
                                 >
                                   <SelectTrigger className="w-full h-10">
                                     <SelectValue placeholder="Chọn hành động" />
