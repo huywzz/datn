@@ -31,6 +31,104 @@ const formSchema = z.object({
     .min(6, 'Password must be at least 6 characters long'),
 })
 
+export const normalizeUserFromApi = (user?: ApiUser | null) => {
+  if (!user) {
+    return null
+  }
+
+  const roles = Array.isArray(user.role)
+    ? user.role.filter(Boolean)
+    : user.role
+      ? [user.role].filter(Boolean)
+      : []
+
+  return {
+    userId: user.userId,
+    name: user.name ?? (user.email ? user.email.split('@')[0] : undefined),
+    email: user.email ?? '',
+    role: roles,
+    status: user.status,
+    exp: user.exp,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  }
+}
+
+export const normalizeStudentFromApi = (student?: StudentInfo | null) => {
+  if (!student) return null
+  return {
+    id: student.id,
+    studentCode: student.studentCode,
+    userId: student.userId,
+    fullName: student.fullName,
+    currentSemester: student.currentSemester,
+    cohortId: student.cohortId,
+    classCode: student.classCode,
+    major: student.major,
+    yearOfStudy: student.yearOfStudy,
+    currentYear: student.currentYear,
+    createdAt: student.createdAt,
+    updatedAt: student.updatedAt,
+  } satisfies StudentInfo
+}
+
+export function applyAuthResponse(
+  authStore: ReturnType<typeof useAuthStore.getState>['auth'],
+  response: {
+    accessToken?: string | null
+    token?: string | null
+    access_token?: string | null
+    user?: ApiUser | null
+    student?: StudentInfo | null
+    data?: {
+      accessToken?: string | null
+      token?: string | null
+      access_token?: string | null
+      user?: ApiUser | null
+      student?: StudentInfo | null
+    }
+  },
+  fallbackEmail?: string
+) {
+  const payload = response?.data ?? response
+  const accessToken = payload?.accessToken || payload?.token || payload?.access_token
+
+  if (accessToken) {
+    authStore.setAccessToken(accessToken)
+  }
+
+  const userData = normalizeUserFromApi(payload?.user)
+
+  if (userData) {
+    authStore.setUser({
+      ...userData,
+      role: userData.role.length > 0 ? userData.role : ['user'],
+    })
+  } else if (accessToken) {
+    authStore.setUser({
+      email: fallbackEmail ?? '',
+      role: ['user'],
+      exp: Date.now() + 24 * 60 * 60 * 1000,
+    })
+  }
+
+  const studentData = normalizeStudentFromApi(payload?.student)
+  if (studentData) {
+    authStore.setStudent(studentData)
+    const roleFromStudent = payload?.student?.role
+    if (roleFromStudent) {
+      const rolesArray = Array.isArray(roleFromStudent) ? roleFromStudent : [roleFromStudent]
+      const current = useAuthStore.getState().auth.user
+      if (current) {
+        authStore.setUser({
+          ...current,
+          role: current.role?.length ? current.role : rolesArray,
+        })
+      }
+    }
+  }
+}
+
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLFormElement> {
   redirectTo?: string
 }
@@ -52,47 +150,6 @@ export function UserAuthForm({
     },
   })
 
-  const normalizeUser = (user?: ApiUser | null) => {
-    if (!user) {
-      return null
-    }
-
-    const roles = Array.isArray(user.role)
-      ? user.role.filter(Boolean)
-      : user.role
-        ? [user.role].filter(Boolean)
-        : []
-
-    return {
-      userId: user.userId,
-      name: user.name ?? (user.email ? user.email.split('@')[0] : undefined),
-      email: user.email ?? '',
-      role: roles,
-      status: user.status,
-      exp: user.exp,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    }
-  }
-
-  const normalizeStudent = (student?: StudentInfo | null) => {
-    if (!student) return null
-    return {
-      id: student.id,
-      studentCode: student.studentCode,
-      userId: student.userId,
-      fullName: student.fullName,
-      currentSemester: student.currentSemester,
-      cohortId: student.cohortId,
-      classCode: student.classCode,
-      major: student.major,
-      yearOfStudy: student.yearOfStudy,
-      currentYear: student.currentYear,
-      createdAt: student.createdAt,
-      updatedAt: student.updatedAt,
-    } satisfies StudentInfo
-  }
-
   async function onSubmit(data: z.infer<typeof formSchema>) {
     setIsLoading(true)
 
@@ -108,43 +165,7 @@ export function UserAuthForm({
 
       const result = await loginPromise
 
-      const userData = normalizeUser(result.data?.user)
-      const studentData = normalizeStudent((result.data as { student?: StudentInfo })?.student)
-      const accessToken =
-        result.data?.accessToken || (result as { accessToken?: string }).accessToken
-
-      if (accessToken) {
-        auth.setAccessToken(accessToken)
-      }
-
-      if (userData) {
-        auth.setUser({
-          ...userData,
-          role: userData.role.length > 0 ? userData.role : ['user'],
-        })
-      } else if (accessToken) {
-        auth.setUser({
-          email: data.email,
-          role: ['user'],
-          exp: Date.now() + 24 * 60 * 60 * 1000,
-        })
-      }
-
-      if (studentData) {
-        auth.setStudent(studentData)
-        // If backend also carries role in student payload, add it to user roles if missing
-        const roleFromStudent = (result.data as { student?: { role?: string | string[] } })?.student?.role
-        if (roleFromStudent) {
-          const rolesArray = Array.isArray(roleFromStudent) ? roleFromStudent : [roleFromStudent]
-          const current = useAuthStore.getState().auth.user
-          if (current) {
-            auth.setUser({
-              ...current,
-              role: current.role?.length ? current.role : rolesArray,
-            })
-          }
-        }
-      }
+      applyAuthResponse(auth, result, data.email)
 
       const latestUser = useAuthStore.getState().auth.user
       const isAdmin =

@@ -77,10 +77,22 @@ api.interceptors.request.use(
 
 export async function loginWithGoogle(idToken: string): Promise<GoogleLoginResponse> {
   try {
-    const response = await api.post<GoogleLoginResponse>('/auth/login/google', {
+    const response = await api.post<
+      GoogleLoginResponse | { success?: boolean; data?: GoogleLoginResponse; message?: string }
+    >('/auth/login/google', {
       idToken,
     })
-    return response.data
+
+    const payload = response.data
+    if (payload && typeof payload === 'object' && 'success' in payload) {
+      const wrapped = payload as { success?: boolean; data?: GoogleLoginResponse; message?: string }
+      if (wrapped.success === false) {
+        throw new Error(wrapped.message || 'Đăng nhập Google thất bại.')
+      }
+      return wrapped.data || {}
+    }
+
+    return payload as GoogleLoginResponse
   } catch (error) {
     handleApiError(error, 'Đăng nhập thất bại')
   }

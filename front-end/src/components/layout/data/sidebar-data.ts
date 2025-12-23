@@ -15,13 +15,14 @@ import { getLocalStorage } from '@/lib/local-storage'
 let hydratedName = 'satnaing'
 let hydratedEmail = 'satnaingdev@gmail.com'
 try {
-  const studentStr = typeof window !== 'undefined' ? getLocalStorage('auth_student') : null
+  const studentStr = typeof window !== 'undefined' ? getLocalStorage('auth_user') : null
+  console.log('studentStr', JSON.parse(studentStr));
   if (studentStr) {
     const student = JSON.parse(studentStr) as {
-      fullName?: string
+      name?: string
       studentCode?: string
     }
-    if (student?.fullName) hydratedName = student.fullName
+    if (student?.name) hydratedName = student.name
     if (student?.studentCode) hydratedEmail = student.studentCode
   }
 } catch {

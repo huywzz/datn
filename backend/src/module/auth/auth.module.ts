@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
-import { MysqlProviderModule } from 'src/provider';
+import { FirebaseProviderModule, MysqlProviderModule } from 'src/provider';
 import { AuthController } from './controller/auth.controller';
 import { AuthService } from './service/auth.service';
 import { JwtStrategyService } from './service/jwt.strategy';
@@ -13,6 +13,7 @@ import { userProviders } from '../user/user.provider';
     MysqlProviderModule,
     ConfigModule,
     JwtModule.register({}),
+    FirebaseProviderModule,
   ],
   controllers: [AuthController],
   providers: [...userProviders, AuthService, JwtStrategyService, JwtAuthGuard],

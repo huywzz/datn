@@ -5,7 +5,7 @@
 /**
  * Get a value from localStorage by key
  */
-export function getLocalStorage(key: string): string | null {
+export function getLocalStorage(key: string): any {
   if (typeof window === 'undefined') return null
 
   try {

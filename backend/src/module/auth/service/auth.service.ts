@@ -11,23 +11,18 @@ import { JwtStrategyService } from './jwt.strategy';
 import { Cohort } from '../../cohort/entities/cohort.entity';
 import { UserRole } from 'src/common/constant/enum';
 import * as bcrypt from 'bcrypt';
-import { OAuth2Client } from 'google-auth-library';
+import { FirebaseService } from 'src/provider/firebase/firebase.service';
 
 @Injectable()
 export class AuthService {
-  private readonly googleClient: OAuth2Client;
-
   constructor(
     private readonly userRepository: UserRepository,
     private readonly studentRepository: StudentRepository,
     private readonly jwtStrategyService: JwtStrategyService,
     private readonly configService: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly firebaseService: FirebaseService,
   ) {
-    // Initialize Google OAuth2Client
-    // Client ID is optional - if not provided, we'll verify token without client ID check
-    const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    this.googleClient = new OAuth2Client(googleClientId);
   }
 
   /**
@@ -221,35 +216,20 @@ export class AuthService {
   }
 
   /**
-   * Login with Google
-   * @param googleLoginDto - Google login data with ID token
-   * @returns User and access token
+   * Login với Google/Firebase token từ FE
+   * @param googleLoginDto - chứa idToken do Firebase FE gửi lên
+   * @returns User và access token hệ thống
    */
   async loginWithGoogle(googleLoginDto: GoogleLoginDto): Promise<{ user: User; accessToken: string }> {
     try {
-      // Verify Google ID token
-      const googleClientId = this.configService.get<string>('GOOGLE_CLIENT_ID');
-      const verifyOptions: { idToken: string; audience?: string } = {
-        idToken: googleLoginDto.idToken,
-      };
+      // Xác thực token bằng Firebase Admin
+      const payload = await this.firebaseService.verifyToken(googleLoginDto.idToken);
+      console.log('payload', payload);
 
-      // Only add audience if GOOGLE_CLIENT_ID is configured
-      if (googleClientId) {
-        verifyOptions.audience = googleClientId;
-      }
-
-      const ticket = await this.googleClient.verifyIdToken(verifyOptions);
-
-      const payload = ticket.getPayload();
-      if (!payload) {
-        throw new UnauthorizedException('Invalid Google token');
-      }
-
-      // Extract user information from Google token
-      const { email, name, picture, sub: googleId } = payload;
+      const { email, name, sub: googleId } = payload || {};
 
       if (!email) {
-        throw new UnauthorizedException('Email not provided in Google token');
+        throw new UnauthorizedException('Email không tồn tại trong token Google');
       }
 
       // Find existing user by email
@@ -257,28 +237,8 @@ export class AuthService {
         where: { email },
       });
 
-      if (user) {
-        // User exists, check if account is active
-        if (!user.status) {
-          throw new UnauthorizedException('User account is inactive');
-        }
-
-        // Update user name and picture if they changed (optional)
-        if (name && user.name !== name) {
-          user.name = name;
-          await this.userRepository.save(user);
-        }
-      } else {
-        // User doesn't exist, create new user
-        const newUser = this.userRepository.create({
-          name: name || email.split('@')[0], // Use name from Google or email prefix
-          email,
-          password: undefined, // No password for Google login - password is nullable
-          role: 'student', // Default role
-          status: true,
-        });
-
-        user = await this.userRepository.save(newUser);
+      if(!user) {
+        throw new UnauthorizedException('User không tồn tại');
       }
 
       // Generate JWT token
@@ -297,7 +257,7 @@ export class AuthService {
         throw error;
       }
       // Handle Google verification errors
-      throw new UnauthorizedException('Invalid Google token or authentication failed');
+      throw new UnauthorizedException('Google token không hợp lệ hoặc xác thực thất bại');
     }
   }
 
