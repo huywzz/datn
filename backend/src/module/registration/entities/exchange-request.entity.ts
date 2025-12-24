@@ -9,7 +9,7 @@ import {
 } from 'typeorm';
 import { CourseSection } from '../../course/entities/course-section.entity';
 import { ExchangeTransaction } from './exchange-transaction.entity';
-import { ExchangeAction } from 'src/common/constant/enum';
+import { ExchangeAction } from '../../../common/constant/enum';
 // export type ExchangeAction = 'ADD' | 'REMOVE';
 
 @Entity({ name: 'exchange_requests' })

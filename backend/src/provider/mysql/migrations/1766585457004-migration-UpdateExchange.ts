@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class MigrationUpdateExchange1765898152304 implements MigrationInterface {
-    name = 'MigrationUpdateExchange1765898152304'
+export class MigrationUpdateExchange1766585457004 implements MigrationInterface {
+    name = 'MigrationUpdateExchange1766585457004'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE \`exchange_requests\` DROP FOREIGN KEY \`FK_62dad235064bed1b5cba0912bd8\``);
