@@ -25,7 +25,7 @@ import type {
 // Re-export types for convenience
 export type { ApiUser, Course, AvailableCourse, CourseSection, MyScheduleData, MyScheduleItem, Cohort, Semester } from './interface'
 
-const API_BASE_URL = 'http://localhost:3004'
+const API_BASE_URL = window.env?.VITE_URL_API || import.meta.env.VITE_URL_API || 'http://localhost:3004'
 
 /**
  * Helper function to handle API errors consistently
@@ -39,7 +39,7 @@ function handleApiError(error: unknown, defaultMessage: string): never {
     if (status === 401 || status === 403 || status === 500) {
       throw error
     }
-    
+
     // For other errors, throw with custom message
     throw new Error(
       (error.response?.data as { message?: string; error?: string })?.message ||
@@ -259,7 +259,7 @@ export async function searchCourseSections(
 export async function getAllCourseSections(): Promise<CourseSection[]> {
   try {
     const response = await api.get<CourseSection[] | { success: boolean; data?: CourseSection[]; message?: string }>('/course-sections')
-    
+
     // Check if response has wrapper format
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       const wrappedResponse = response.data as { success: boolean; data?: CourseSection[]; message?: string }
@@ -268,7 +268,7 @@ export async function getAllCourseSections(): Promise<CourseSection[]> {
       }
       return wrappedResponse.data || []
     }
-    
+
     // Direct array response
     return Array.isArray(response.data) ? response.data : []
   } catch (error) {
@@ -319,7 +319,7 @@ export async function getMySchedule(): Promise<MyScheduleData> {
 export async function getSectionOfStudent(): Promise<CourseSection[]> {
   try {
     const response = await api.get<CourseSection[] | { success: boolean; data?: CourseSection[]; message?: string }>('/registrations/section-of-student')
-    
+
     // Check if response has wrapper format
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       const wrappedResponse = response.data as { success: boolean; data?: CourseSection[]; message?: string }
@@ -328,7 +328,7 @@ export async function getSectionOfStudent(): Promise<CourseSection[]> {
       }
       return wrappedResponse.data || []
     }
-    
+
     // Direct array response
     return Array.isArray(response.data) ? response.data : []
   } catch (error) {
@@ -415,7 +415,7 @@ export async function createExchangeTransaction(
 ): Promise<ExchangeTransaction> {
   try {
     const response = await api.post<ExchangeTransaction | { success: boolean; data?: ExchangeTransaction; message?: string }>('/exchange-transactions', payload)
-    
+
     // Check if response has wrapper format
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       const wrappedResponse = response.data as { success: boolean; data?: ExchangeTransaction; message?: string }
@@ -427,7 +427,7 @@ export async function createExchangeTransaction(
       }
       return wrappedResponse.data
     }
-    
+
     // Direct object response
     return response.data as ExchangeTransaction
   } catch (error) {
@@ -438,7 +438,7 @@ export async function createExchangeTransaction(
 export async function getMyExchangeTransactions(): Promise<ExchangeTransaction[]> {
   try {
     const response = await api.get<ExchangeTransaction[] | { success: boolean; data?: ExchangeTransaction[]; message?: string }>('/exchange-transactions/student')
-    
+
     // Check if response has wrapper format
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       const wrappedResponse = response.data as { success: boolean; data?: ExchangeTransaction[]; message?: string }
@@ -447,7 +447,7 @@ export async function getMyExchangeTransactions(): Promise<ExchangeTransaction[]
       }
       return wrappedResponse.data || []
     }
-    
+
     // Direct array response
     return Array.isArray(response.data) ? response.data : []
   } catch (error) {
@@ -458,7 +458,7 @@ export async function getMyExchangeTransactions(): Promise<ExchangeTransaction[]
 export async function getAllExchangeTransactions(): Promise<ExchangeTransaction[]> {
   try {
     const response = await api.get<ExchangeTransaction[] | { success: boolean; data?: ExchangeTransaction[]; message?: string }>('/exchange-transactions')
-    
+
     // Check if response has wrapper format
     if (response.data && typeof response.data === 'object' && 'success' in response.data) {
       const wrappedResponse = response.data as { success: boolean; data?: ExchangeTransaction[]; message?: string }
@@ -467,7 +467,7 @@ export async function getAllExchangeTransactions(): Promise<ExchangeTransaction[
       }
       return wrappedResponse.data || []
     }
-    
+
     // Direct array response
     return Array.isArray(response.data) ? response.data : []
   } catch (error) {
