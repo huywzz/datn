@@ -27,7 +27,9 @@
     "seed:local": "cross-env PATH_TO_RUN=seeds/local typeorm-ts-node-commonjs migration:run -d src/config/typeorm-seed.config.ts",
     "seed:dev": "cross-env PATH_TO_RUN=seeds/dev typeorm-ts-node-commonjs migration:run -d src/config/typeorm-seed.config.ts",
     "seed:stag": "cross-env PATH_TO_RUN=seeds/stag typeorm-ts-node-commonjs migration:run -d src/config/typeorm-seed.config.ts",
-    "seed:prod": "cross-env PATH_TO_RUN=seeds/prod typeorm-ts-node-commonjs migration:run -d src/config/typeorm-seed.config.ts"
+    "seed:prod": "cross-env PATH_TO_RUN=seeds/prod typeorm-ts-node-commonjs migration:run -d src/config/typeorm-seed.config.ts",
+    "migration:up:prod": "typeorm migration:run -d dist/src/config/typeorm-migration.config.js",
+    "seed:dev:prod": "cross-env PATH_TO_RUN=seeds/dev typeorm migration:run -d dist/src/config/typeorm-seed.config.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
