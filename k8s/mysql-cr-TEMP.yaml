@@ -1,0 +1,8 @@
+apiVersion: mysql.oracle.com/v2
+kind: InnoDBCluster
+metadata:
+  name: sample-cluster
+  namespace: mysql-operator
+spec:
+  instances: 1
+  secretName: sample-cluster-secret  # <-- Secret sẽ được tạo ra

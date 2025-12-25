@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datn-fe
+  namespace: datn
+  labels:
+    app: datn-fe
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: datn-fe
+  template:
+    metadata:
+      labels:
+        app: datn-fe
+    spec:
+      containers:
+        - name: datn-fe
+          image: lvtdel/datn-fe:latest
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: datn-fe-secret

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: datn-fe
+  namespace: datn
+spec:
+  selector:
+    app: datn-fe
+  ports:
+    - port: 80
+      targetPort: 80

@@ -7,7 +7,7 @@ npm run migration:generate --name=<TenMigration>
 ```
 - **Chạy**
 ```bash
-npm run migration:run
+npm run migration:up
 ```
 - **Revert 1 bước**
 ```bash

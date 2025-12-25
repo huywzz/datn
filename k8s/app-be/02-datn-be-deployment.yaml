@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: datn-be
+  namespace: datn
+spec:
+  replicas: 1   # HPA sẽ override giá trị này
+  selector:
+    matchLabels:
+      app: datn-be
+  template:
+    metadata:
+      labels:
+        app: datn-be
+    spec:
+      containers:
+        - name: datn-be
+          image: lvtdel/datn-be:latest
+          ports:
+            - containerPort: 300
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          envFrom:
+            - secretRef:
+                name: datn-be-secret
+          volumeMounts:
+            - name: firebase-config
+              mountPath: /app/secrets
+              readOnly: true
+          env:
+            - name: FIREBASE_CONFIG_URL
+              value: /app/secrets/firebase-auth-config.json
+            - name: FIREBASE_AUTH_CONFIG_URL
+              value: /app/secrets/firebase-auth-config.json
+      volumes:
+        - name: firebase-config
+          secret:
+            secretName: firebase-config-secret

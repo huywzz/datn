@@ -9,16 +9,16 @@ const logger = new Logger('RedisProvider');
 const createRedisOptions = (configService: ConfigService): RedisOptions => {
   const host = configService.get<string>('REDIS_HOST', '127.0.0.1');
   const port = configService.get<number>('REDIS_PORT', 6379);
-//   const password = configService.get<string>('REDIS_PASSWORD');
-//   const db = configService.get<number>('REDIS_DB', 0);
-//   const keyPrefix = configService.get<string>('REDIS_KEY_PREFIX');
+  const password = configService.get<string>('REDIS_PASSWORD');
+  const db = configService.get<number>('REDIS_DB', 0);
+  const keyPrefix = configService.get<string>('REDIS_KEY_PREFIX');
   const tlsEnabled = configService.get<string>('REDIS_TLS_ENABLED', 'false') === 'true';
 
   const options: RedisOptions = {
     host,
     port,
     lazyConnect: false,
-    // password: password || undefined,
+    password: password || undefined,
     maxRetriesPerRequest: 3,
     retryStrategy: (times) => Math.min(times * 50, 2000),
   };

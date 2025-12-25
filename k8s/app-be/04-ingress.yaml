@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: datn-ingress
+  namespace: datn
+  annotations:
+    kubernetes.io/ingress.class: kong
+    konghq.com/strip-path: "true"
+spec:
+  ingressClassName: kong
+  rules:
+    - host: register-api.lvtdel.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: datn-be
+                port:
+                  number: 300
+    - host: register.lvtdel.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: datn-fe
+                port:
+                  number: 80
