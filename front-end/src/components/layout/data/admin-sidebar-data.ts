@@ -15,9 +15,9 @@ export const adminSidebarData: SidebarData = {
     },
     teams: [
         {
-            name: 'EduManage Admin',
+            name: 'Quản trị viên',
             logo: LayoutDashboard,
-            plan: 'Administrator',
+            plan: ' ',
         },
     ],
     navGroups: [
@@ -25,7 +25,7 @@ export const adminSidebarData: SidebarData = {
             title: 'Quản lý',
             items: [
                 {
-                    title: 'Quản lý đợt đăng ký',
+                    title: 'Mở đợt đăng ký',
                     url: '/admin/cohort-schedule',
                     icon: CalendarRange,
                 },
@@ -34,11 +34,11 @@ export const adminSidebarData: SidebarData = {
                     url: '/courses',
                     icon: Book,
                 },
-                {
-                    title: 'Đăng ký cho sinh viên',
-                    url: '/admin/registration',
-                    icon: UserPlus,
-                }
+                // {
+                //     title: 'Đăng ký cho sinh viên',
+                //     url: '/admin/registration',
+                //     icon: UserPlus,
+                // }
             ],
         },
     ],

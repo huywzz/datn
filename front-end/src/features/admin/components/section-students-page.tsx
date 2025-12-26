@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tansta
 import { useParams, useNavigate, useSearch } from '@tanstack/react-router'
 import {
   getSectionStudents,
-  deleteSectionStudent,
+  deleteRegistration,
   getCohorts,
   searchStudents,
   registerSection,
@@ -107,7 +107,7 @@ export function SectionStudentsPage() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (registrationId: number) => deleteSectionStudent(Number(sectionId), registrationId),
+    mutationFn: (registrationId: number) => deleteRegistration(registrationId),
     onSuccess: () => {
       toast.success('Đã xóa sinh viên khỏi lớp học phần')
       queryClient.invalidateQueries({ queryKey: ['section-students', sectionId] })

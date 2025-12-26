@@ -22,9 +22,10 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { toast } from 'sonner'
-import { createCourseRegistrationPeriod } from '@/lib/api'
-import { useMutation } from '@tanstack/react-query'
+import { createCourseRegistrationPeriod, getCourseRegistrationPeriod } from '@/lib/api'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Input } from '@/components/ui/input'
+import { useEffect } from 'react'
 
 const formSchema = z.object({
     startDate: z.date(),
@@ -46,10 +47,60 @@ function isPastDate(date: Date): boolean {
     return date < today
 }
 
+function parseISOToDateAndTime(isoString: string): { date: Date; time: string } | null {
+    if (!isoString) return null
+    
+    const date = new Date(isoString)
+    
+    // Kiểm tra Date hợp lệ
+    if (isNaN(date.getTime())) {
+        return null
+    }
+    
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    
+    // Tạo Date object mới chỉ với ngày (không có giờ)
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    
+    // Kiểm tra Date hợp lệ sau khi tạo
+    if (isNaN(dateOnly.getTime())) {
+        return null
+    }
+    
+    return {
+        date: dateOnly,
+        time: `${hours}:${minutes}`,
+    }
+}
+
 export function CohortSchedulePage() {
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
     })
+
+    const queryClient = useQueryClient()
+
+    const { data: registrationPeriod } = useQuery({
+        queryKey: ['course-registration-period', 1],
+        queryFn: () => getCourseRegistrationPeriod(1),
+    })
+
+    useEffect(() => {
+        if (registrationPeriod?.startTime && registrationPeriod?.endTime) {
+            const startDateTime = parseISOToDateAndTime(registrationPeriod.startTime)
+            const endDateTime = parseISOToDateAndTime(registrationPeriod.endTime)
+
+            if (startDateTime && endDateTime) {
+                form.reset({
+                    startDate: startDateTime.date,
+                    startTime: startDateTime.time,
+                    endDate: endDateTime.date,
+                    endTime: endDateTime.time,
+                })
+            }
+        }
+    }, [registrationPeriod, form])
 
     const mutation = useMutation({
         mutationFn: (values: z.infer<typeof formSchema>) =>
@@ -58,8 +109,10 @@ export function CohortSchedulePage() {
                 endTime: combineDateAndTime(values.endDate, values.endTime),
             }),
         onSuccess: () => {
-            toast.success('Tạo lịch đăng ký thành công')
+            toast.success('Lưu lịch đăng ký thành công')
             form.reset()
+            // Refetch lại dữ liệu sau khi lưu thành công
+            queryClient.invalidateQueries({ queryKey: ['course-registration-period', 1] })
         },
         onError: (error) => {
             toast.error(error.message)
@@ -76,10 +129,9 @@ export function CohortSchedulePage() {
                 <CardHeader className='pb-4'>
                     <div className='flex items-start justify-between gap-4'>
                         <div>
-                            <CardTitle className='text-xl font-semibold'>Tạo đợt đăng ký tín chỉ</CardTitle>
+                            <CardTitle className='text-xl font-semibold'>Mở đợt đăng ký tín chỉ</CardTitle>
                             <CardDescription>
-                                Chọn khoảng thời gian mở/đóng đăng ký tín chỉ cho sinh viên. Thời gian được tính theo múi
-                                giờ máy chủ.
+                                Chọn khoảng thời gian mở/đóng đăng ký tín chỉ cho sinh viên.
                             </CardDescription>
                         </div>
                     </div>
@@ -105,7 +157,11 @@ export function CohortSchedulePage() {
                                             )}
                                         >
                                             <CalendarIcon className='h-4 w-4 text-primary' />
-                                            {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Chọn ngày</span>}
+                                            {field.value && !isNaN(field.value.getTime()) ? (
+                                                format(field.value, 'dd/MM/yyyy')
+                                            ) : (
+                                                <span>Chọn ngày</span>
+                                            )}
                                         </Button>
                                         </FormControl>
                                     </PopoverTrigger>
@@ -141,7 +197,11 @@ export function CohortSchedulePage() {
                                             )}
                                         >
                                             <CalendarIcon className='h-4 w-4 text-primary' />
-                                            {field.value ? format(field.value, 'dd/MM/yyyy') : <span>Chọn ngày</span>}
+                                            {field.value && !isNaN(field.value.getTime()) ? (
+                                                format(field.value, 'dd/MM/yyyy')
+                                            ) : (
+                                                <span>Chọn ngày</span>
+                                            )}
                                         </Button>
                                         </FormControl>
                                     </PopoverTrigger>
@@ -299,7 +359,7 @@ export function CohortSchedulePage() {
 
                             <div className='flex items-center justify-end pt-2'>
                                 <Button type='submit' disabled={mutation.isPending} className='min-w-[160px]'>
-                                    {mutation.isPending ? 'Đang tạo...' : 'Tạo lịch đăng ký'}
+                                    {mutation.isPending ? 'Đang tạo...' : 'Lưu lịch đăng ký'}
                                 </Button>
                             </div>
                         </form>

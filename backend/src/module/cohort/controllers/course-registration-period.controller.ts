@@ -36,13 +36,13 @@ export class CourseRegistrationPeriodController {
   //   return await this.periodService.findAll();
   // }
 
-  // @Get(':id')
-  // @ApiOperation({ summary: 'Get registration period by ID' })
-  // @ApiResponse({ status: 200, description: 'Registration period found', type: CourseRegistrationPeriod })
-  // @ApiResponse({ status: 404, description: 'Registration period not found' })
-  // async findOne(@Param('id') id: string): Promise<CourseRegistrationPeriod> {
-  //   return await this.periodService.findOne(Number(id));
-  // }
+  @Get(':id')
+  @ApiOperation({ summary: 'Get registration period by ID' })
+  @ApiResponse({ status: 200, description: 'Registration period found', type: CourseRegistrationPeriod })
+  @ApiResponse({ status: 404, description: 'Registration period not found' })
+  async findOne(@Param('id') id: string): Promise<CourseRegistrationPeriod> {
+    return await this.periodService.findOne(Number(id));
+  }
 
   // @Put(':id')
   // @ApiOperation({ summary: 'Update registration period' })

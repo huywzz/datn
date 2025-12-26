@@ -37,8 +37,8 @@ export function CohortRegistrationManagement() {
               </svg>
             </div>
             <div>
-              <h1 className='text-2xl font-bold tracking-tight'>Quản lý đợt đăng ký tín chỉ</h1>
-              <p className='text-muted-foreground'>Tạo và quản lý lịch đăng ký tín chỉ cho các khóa học</p>
+              <h1 className='text-2xl font-bold tracking-tight'>Mở đợt đăng ký tín chỉ</h1>
+              {/* <p className='text-muted-foreground'>Tạo đợt đăng ký tín chỉ cho các khóa học</p> */}
             </div>
           </div>
 

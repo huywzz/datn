@@ -368,7 +368,27 @@ export async function createCourseRegistrationPeriod(
     )
     return response.data
   } catch (error) {
-    handleApiError(error, 'Tạo đợt đăng ký tín chỉ thất bại')
+    handleApiError(error, 'Mở đợt đăng ký tín chỉ thất bại')
+  }
+}
+
+export async function getCourseRegistrationPeriod(
+  id: number = 1
+): Promise<import('./interface').CourseRegistrationPeriod> {
+  try {
+    const response = await api.get<{
+      success: boolean
+      data?: import('./interface').CourseRegistrationPeriod
+      message?: string
+    }>(`/course-registration-periods/${id}`)
+
+    if (!response.data?.success || !response.data.data) {
+      throw new Error(response.data?.message || 'Không thể tải thông tin đợt đăng ký tín chỉ.')
+    }
+
+    return response.data.data
+  } catch (error) {
+    handleApiError(error, 'Lấy thông tin đợt đăng ký tín chỉ thất bại')
   }
 }
 
@@ -502,7 +522,7 @@ export async function createCohortRegistrationSchedule(
     )
     return response.data
   } catch (error) {
-    handleApiError(error, 'Tạo lịch đăng ký thất bại')
+    handleApiError(error, 'Lưu lịch đăng ký thất bại')
   }
 }
 

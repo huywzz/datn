@@ -140,7 +140,7 @@ export function CourseDetail() {
                                                     </h4>
                                                 </div>
                                                 <div className="text-sm text-muted-foreground">
-                                                    Sĩ số: <span className="font-medium text-foreground">{section.currentStudents || 0}/{section.maxStudents}</span>
+                                                    Sĩ số: <span className="font-medium text-foreground">{section.currentStudents}/{section.maxStudents}</span>
                                                 </div>
                                             </div>
 

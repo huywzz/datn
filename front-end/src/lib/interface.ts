@@ -187,6 +187,7 @@ export interface CourseRegistrationPeriod {
   id: number;
   startTime: string;
   endTime: string;
+  status?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

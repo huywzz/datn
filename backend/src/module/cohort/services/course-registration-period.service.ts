@@ -43,14 +43,15 @@ export class CourseRegistrationPeriodService {
     // if (existingPeriod) {
     //   throw new ConflictException('Active registration period already exists');
     // }
+    const foundPeriod = await this.periodRepository.findOne({ where: { id:1 } });
+    if (!foundPeriod) {
+      throw new NotFoundException('Registration period not found');
+    }
+    foundPeriod.startTime = new Date(dto.startTime);
+    foundPeriod.endTime = new Date(dto.endTime);
+    foundPeriod.status = true;
 
-    const period = this.periodRepository.create({
-      startTime: new Date(dto.startTime),
-      endTime: new Date(dto.endTime),
-      status: true,
-    });
-
-    return await this.periodRepository.save(period);
+    return await this.periodRepository.save(foundPeriod);
   }
 
   async findAll(): Promise<CourseRegistrationPeriod[]> {
@@ -60,6 +61,7 @@ export class CourseRegistrationPeriodService {
   }
 
   async findOne(id: number): Promise<CourseRegistrationPeriod> {
+    id=1
     const period = await this.periodRepository.findOne({ where: { id } });
     if (!period) {
       throw new NotFoundException(`Registration period with ID ${id} not found`);
