@@ -67,7 +67,7 @@ export const sidebarData: SidebarData = {
           icon: CalendarCheck,
         },
         {
-          title: 'Trao đổi tín chỉ',
+          title: 'Hiệu chỉnh đăng ký',
           icon: ArrowLeftRight,
           items: [
             {
