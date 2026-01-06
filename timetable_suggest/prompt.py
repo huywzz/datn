@@ -14,13 +14,13 @@ def get_score_sections_function_schema() -> Dict[str, Any]:
     """
     return {
         "name": "score_course_sections",
-        "description": "Đánh giá và cho điểm các section học phần dựa trên mong muốn của sinh viên. Điểm từ -1 đến 1.0, trong đó 0.0 = không phù hợp, 1.0 = rất phù hợp, -1 là không muốn chọn.",
+        "description": "Sắp xếp thời khoá biểu các môn học hợp lý đạt tổng score cao",
         "parameters": {
             "type": "object",
             "properties": {
                 "scores": {
-                    "type": "string",
-                    "description": "JSON string mapping sectionId (string) to score (number from -1 to 1.0). Ví dụ: '{\"1\": 0.95, \"2\": 0.87}'"
+                    "type": "object",
+                    "description": "Object mapping mapping sectionId (string) to score (number from -1.0 to 1.0). Ví dụ: '{\"1\": 0.95, \"2\": 0.87, \"3\": -1.0}'"
                 }
             },
             "required": ["scores"]
@@ -39,40 +39,57 @@ def build_prompt(flattened_sections: List[CourseFlatten], preferences: str) -> s
     Returns:
         Formatted prompt string
     """
-    prompt = """Bạn là một hệ thống tư vấn đăng ký học phần thông minh. 
-Nhiệm vụ của bạn là đánh giá và cho điểm các section học phần dựa trên mong muốn của sinh viên.
-
+    prompt = """
 THÔNG TIN CÁC SECTION HỌC PHẦN:
-"""
+Mỗi section được biểu diễn trên 1 dòng, các field được ngăn cách bởi ký tự | theo đúng thứ tự sau:
+sectionId | courseName | sectionCode | credits | instructor | schedules
+Trong đó:
+- sectionId: ID của section
+- courseName: tên môn học
+- sectionCode: mã lớp học phần
+- credits: số tín chỉ
+- instructor: tên giảng viên
+- schedules: danh sách lịch học, mỗi lịch có dạng:
+  Thứ-X(tiết_bắt_đầu-tiết_kết_thúc)[phòng]
+  - Nếu nhiều lịch, ngăn cách bởi dấu ;
 
-    # Add course sections information
+Ví dụ:
+31 | Lập Trình Căn Bản | LTCB-01 | 3 | Nguyễn Văn A | Thứ-2(1-3)[A101]; Thứ-4(4-6)[A101]
+
+DANH SÁCH SECTION
+"""
+    # Add course sections information (pipe-separated format)
     for section in flattened_sections:
-        section_dict = section.to_dict()
-        schedules_text = []
-        for schedule in section_dict.get('schedules', []):
-            day_map = {
-                '1': 'Thứ 2',
-                '2': 'Thứ 3',
-                '3': 'Thứ 4',
-                '4': 'Thứ 5',
-                '5': 'Thứ 6',
-                '6': 'Thứ 7'
-            }
-            day_text = day_map.get(schedule.get('dayOfWeek', ''), f"Thứ {schedule.get('dayOfWeek', '')}")
-            period_text = f"Tiết {schedule.get('startPeriod', 0)}-{schedule.get('endPeriod', 0)}"
-            room_text = f" - Phòng {schedule.get('room', '')}" if schedule.get('room') else ""
-            schedules_text.append(f"{day_text} ({period_text}){room_text}")
+        s = section.to_dict()
+        day_map = {
+            '1': '2',
+            '2': '3',
+            '3': '4',
+            '4': '5',
+            '5': '6',
+            '6': '7'
+        }
+        schedules = []
+        for sch in s.get('schedules', []):
+            day = day_map.get(str(sch.get('dayOfWeek', '')), sch.get('dayOfWeek', ''))
+            schedule_text = (
+                f"Thứ-{day}("
+                f"{sch.get('startPeriod', 0)}-{sch.get('endPeriod', 0)})"
+            )
+            if sch.get('room'):
+                schedule_text += f"[{sch.get('room')}]"
+            schedules.append(schedule_text)
 
-        schedules_str = "; ".join(schedules_text) if schedules_text else "Chưa có lịch"
+        schedules_str = "; ".join(schedules) if schedules else "Chưa có lịch"
 
-        prompt += f"""
-- Section ID: {section_dict['sectionId']}
-  Mã section: {section_dict['sectionCode']}
-  Tên môn học: {section_dict['courseName']}
-  Số tín chỉ: {section_dict['credits']}
-  Giảng viên: {section_dict['instructorName']}
-  Lịch học: {schedules_str}
-"""
+        prompt += (
+            f"{s['sectionId']} | "
+            f"{s['courseName']} | "
+            f"{s['sectionCode']} | "
+            f"{s['credits']} | "
+            f"{s['instructorName']} | "
+            f"{schedules_str}\n"
+        )
 
     prompt += f"""
 
@@ -80,24 +97,23 @@ MONG MUỐN CỦA SINH VIÊN:
 {preferences if preferences else "Không có yêu cầu đặc biệt"}
 
 NHIỆM VỤ:
-Hãy đánh giá và cho điểm từng section học phần dựa trên:
-1. Mức độ phù hợp với mong muốn của sinh viên
-2. Chất lượng giảng viên (nếu có thông tin)
-3. Lịch học có thuận tiện không
-4. Các yếu tố khác có thể ảnh hưởng đến quyết định đăng ký
+Nếu mong muốn của sinh viên liên quan tới sắp xếp lớp học phần/thời khoá biểu thì tôi sẽ
+sử dụng function score_course_sections nếu không thì phản hồi text "không thể thực hiện yêu cầu". 
+Tôi cần bạn dựa vào input, hãy đánh giá và cho điểm từng section học phần dựa trên mức độ phù hợp với mong muốn của sinh viên và trả về kết quả để gọi function call
 
-ĐIỂM SỐ:
-- Điểm từ -1 đến 1.0 (-1 = không được chọn, 0.0 = không phù hợp, 1.0 = rất phù hợp)
-- Làm tròn đến 2 chữ số thập phân
+QUY TẮC CHẤM ĐIỂM
+- Điểm ∈ [-1, 1], làm tròn 2 chữ số
+- BẮT BUỘC trả về đủ TẤT CẢ sectionId
 
-Hãy sử dụng function score_course_sections để trả về kết quả đánh giá. 
-Function này sẽ nhận một dictionary với key là sectionId (string) và value là điểm số (float từ -1 đến 1.0).
-
-Ví dụ:
-- Section ID 1 phù hợp cao: điểm 0.95
-- Section ID 2 phù hợp trung bình: điểm 0.70
-- Section ID 3 không phù hợp: điểm 0.30
-- Section ID 4 không được chọn: -1 (giả sử mong muốn không học môn này hoặc là không muốn học với giảng viên này)
+GỢI Ý:
++1.0 : Rất phù hợp (đúng mong muốn, lịch đẹp)
+0.5–0.8 : Phù hợp
+0.1–0.4 : Ít phù hợp
+0.0 : Không phù hợp 
+-1.0: Sinh viên KHÔNG MUỐN CHỌN nếu:
+    - Trái mong muốn sinh viên 
+    - Sinh viên không muốn học môn này, giảng viên này, tiết ngày, ngày này...
+    - Sinh viên dùng từ "tuyệt đối không, không được" để chỉ định những học phần này
 """
 
     return prompt

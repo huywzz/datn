@@ -172,6 +172,15 @@ class SuggestService:
                 'sectionIds': suggested_section_ids
             }
 
+        except ValueError as e:
+            # Handle specific error from _call_gemini_api
+            error_message = str(e)
+            logger.error(f'Error generating suggestions: {error_message}', exc_info=True)
+            return {
+                'success': False,
+                'error': error_message,
+                'sectionIds': []
+            }
         except Exception as e:
             logger.error(f'Error generating suggestions: {str(e)}', exc_info=True)
             return {
@@ -214,11 +223,13 @@ class SuggestService:
         try:
             # Build prompt
             prompt = build_prompt(flattened_data, preferences)
-            logger.debug(f'Prompt length: {len(prompt)} characters')
+            logger.info(f'Prompt length: {len(prompt)} characters')
+            logger.info(prompt)
 
+            from google.api_core.retry import Retry
             # Call Gemini API with function calling
             logger.info('Calling Gemini API with function calling...')
-            response = self.gemini_model.generate_content(prompt)
+            response = self.gemini_model.generate_content(prompt, request_options={"retry":Retry(maximum=0)})
 
             # Check if function was called
             try:
@@ -263,8 +274,8 @@ class SuggestService:
                             for section_id_str, score in scored_sections.items():
                                 try:
                                     score_float = float(score)
-                                    # Clamp score between 0.0 and 1.0
-                                    score_float = max(0.0, min(1.0, score_float))
+                                    # Clamp score between -1.0 and 1.0
+                                    score_float = max(-1.0, min(1.0, score_float))
                                     result[str(section_id_str)] = round(score_float, 2)
                                 except (ValueError, TypeError):
                                     logger.warning(f'Invalid score for section {section_id_str}: {score}')
@@ -274,27 +285,23 @@ class SuggestService:
                                 f'Successfully received {len(result)} scored sections from Gemini API function call')
                             return result
                         else:
-                            logger.warning(
-                                f'Unexpected function call: {function_call.name}, trying to parse text response')
-                            # Fallback to text parsing
-                            return self._parse_text_response(response, flattened_data)
+                            logger.warning(f'Unexpected function call: {function_call.name}')
+                            raise ValueError('Lỗi, lệnh không hợp lệ, hãy thử lại')
                     else:
-                        logger.debug('No function call in response parts, trying to parse text response')
-                        # Fallback to text parsing
-                        return self._parse_text_response(response, flattened_data)
+                        logger.warning('No function call in response parts')
+                        raise ValueError('Lỗi, lệnh không hợp lệ, hãy thử lại')
                 else:
-                    logger.warning('Invalid response structure, trying to parse text response')
-                    # Fallback to text parsing
-                    return self._parse_text_response(response, flattened_data)
+                    logger.warning('Invalid response structure')
+                    raise ValueError('Lỗi, lệnh không hợp lệ, hãy thử lại')
             except AttributeError as e:
-                logger.warning(f'Error accessing function call in response: {e}, trying to parse text response')
-                # Fallback to text parsing
-                return self._parse_text_response(response, flattened_data)
+                logger.warning(f'Error accessing function call in response: {e}')
+                raise ValueError('Lỗi, lệnh không hợp lệ, hãy thử lại')
 
         except Exception as e:
             logger.error(f'Error calling Gemini API: {str(e)}', exc_info=True)
             # Fallback to simulated scores
-            return self._get_simulated_scores(flattened_data)
+            # return self._get_simulated_scores(flattened_data)
+            raise e
 
     def _parse_text_response(
             self,
@@ -331,8 +338,8 @@ class SuggestService:
             for section_id_str, score in scored_sections.items():
                 try:
                     score_float = float(score)
-                    # Clamp score between 0.0 and 1.0
-                    score_float = max(0.0, min(1.0, score_float))
+                    # Clamp score between -1.0 and 1.0
+                    score_float = max(-1.0, min(1.0, score_float))
                     result[str(section_id_str)] = round(score_float, 2)
                 except (ValueError, TypeError):
                     logger.warning(f'Invalid score for section {section_id_str}: {score}')
@@ -475,6 +482,9 @@ class SuggestService:
         """
         if not scored_sections or not course_sections:
             return []
+        # for section_id, score in scored_sections.items():
+        #     if score <= 0.2:
+        #         scored_sections[section_id] = -1.0
 
         # Create section map for quick lookup
         section_map: Dict[int, CourseSection] = {
@@ -496,7 +506,7 @@ class SuggestService:
         valid_section_ids.sort(key=lambda sid: scored_sections.get(str(sid), 0.0), reverse=True)
 
         # Beam search parameters
-        beam_width = 10  # Number of states to keep at each step
+        beam_width = 20  # Number of states to keep at each step
 
         # Initialize beam with empty state
         # State: frozenset of section IDs (hashable)

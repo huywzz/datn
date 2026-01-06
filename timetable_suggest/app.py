@@ -59,6 +59,15 @@ def suggest_timetable():
         # Generate suggestions using suggest service (flattening is done inside service)
         suggestions_result = suggest_service.suggest(course_sections, student_preferences)
 
+        # Check if suggestion failed and return 400 status code
+        if not suggestions_result.get('success', False):
+            error_message = suggestions_result.get('error', 'Failed to generate suggestions')
+            return jsonify({
+                'message': error_message,
+                'error': error_message,
+                'detail': error_message
+            }), 400
+
         return jsonify(suggestions_result), 200
 
     except Exception as e:
