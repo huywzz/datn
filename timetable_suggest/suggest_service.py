@@ -3,6 +3,7 @@ Service for suggesting timetable using Gemini API
 """
 from typing import List, Dict, Any, Optional
 import logging
+import random
 import os
 import json
 from dotenv import load_dotenv
@@ -24,29 +25,31 @@ class SuggestService:
         # Initialize Gemini API
         api_key = os.getenv('GEMINI_API_KEY')
         self.model_name = os.getenv('GEMINI_MODEL', 'gemini-2.0-flash-lite')
+        self.active_api = os.getenv("ACTIVE_GEMINI_API", "false").lower() == "true"
 
-        if not api_key:
-            raise ValueError('GEMINI_API_KEY is required in environment variables')
-
-        genai.configure(api_key=api_key)
-        try:
-            function_schema = get_score_sections_function_schema()
-            self.gemini_model = genai.GenerativeModel(
-                self.model_name,
-                tools=[{
-                    "function_declarations": [function_schema]
-                }]
-            )
-            logger.info('Gemini API initialized successfully with function calling support')
-        except Exception as e:
-            logger.warning(f'Failed to initialize Gemini API with function calling: {e}')
-            logger.debug(f'Error details: {type(e).__name__}: {str(e)}', exc_info=True)
+        if api_key and self.active_api:
+            genai.configure(api_key=api_key)
             try:
-                self.gemini_model = genai.GenerativeModel(self.model_name)
-                logger.info('Gemini API initialized without function calling (fallback)')
-            except Exception as e2:
-                logger.error(f'Failed to initialize Gemini model: {e2}')
-                raise ValueError(f'Failed to initialize Gemini API: {e2}') from e2
+                function_schema = get_score_sections_function_schema()
+                self.gemini_model = genai.GenerativeModel(
+                    self.model_name,
+                    tools=[{
+                        "function_declarations": [function_schema]
+                    }]
+                )
+                logger.info('Gemini API initialized successfully with function calling support')
+            except Exception as e:
+                logger.warning(f'Failed to initialize Gemini API with function calling: {e}')
+                logger.debug(f'Error details: {type(e).__name__}: {str(e)}', exc_info=True)
+                try:
+                    self.gemini_model = genai.GenerativeModel(self.model_name)
+                    logger.info('Gemini API initialized without function calling (fallback)')
+                except Exception as e2:
+                    logger.error(f'Failed to initialize Gemini model: {e2}')
+                    self.gemini_model = None
+        else:
+            self.gemini_model = None
+            logger.warning('GEMINI_API_KEY not found in environment variables. Using simulated scores.')
 
     def flatten_course_sections(self, course_sections: List[Dict[str, Any]]) -> List[CourseFlatten]:
         """
@@ -198,8 +201,15 @@ class SuggestService:
         flattened_data = self.flatten_course_sections(course_sections)
         logger.info(f'Flattened {len(flattened_data)} course sections for Gemini API')
 
+        # If Gemini API is not configured, use simulated scores
         if not self.gemini_model:
-            raise ValueError('Gemini API model is not initialized')
+            logger.warning('Using simulated scores (Gemini API not configured)')
+            scored_sections: Dict[str, float] = {}
+            for section in flattened_data:
+                random_score = round(random.uniform(0.0, 1.0), 2)
+                scored_sections[str(section.sectionId)] = random_score
+            logger.info(f'Generated {len(scored_sections)} scored sections (simulated)')
+            return scored_sections
 
         try:
             # Build prompt
@@ -283,7 +293,8 @@ class SuggestService:
 
         except Exception as e:
             logger.error(f'Error calling Gemini API: {str(e)}', exc_info=True)
-            raise
+            # Fallback to simulated scores
+            return self._get_simulated_scores(flattened_data)
 
     def _parse_text_response(
             self,
@@ -333,7 +344,25 @@ class SuggestService:
         except (json.JSONDecodeError, AttributeError) as e:
             logger.error(f'Failed to parse text response from Gemini API: {e}')
             logger.error(f'Response text: {response_text if "response_text" in locals() else "N/A"}')
-            raise ValueError(f'Failed to parse Gemini API response: {e}') from e
+            # Fallback to simulated scores
+            return self._get_simulated_scores(flattened_data)
+
+    def _get_simulated_scores(self, flattened_data: List[CourseFlatten]) -> Dict[str, float]:
+        """
+        Generate simulated scores as fallback.
+
+        Args:
+            flattened_data: List of CourseFlatten objects
+
+        Returns:
+            Dictionary mapping sectionId (string) to score (float)
+        """
+        scored_sections: Dict[str, float] = {}
+        for section in flattened_data:
+            random_score = round(random.uniform(0.0, 1.0), 2)
+            scored_sections[str(section.sectionId)] = random_score
+        logger.info(f'Generated {len(scored_sections)} scored sections (simulated fallback)')
+        return scored_sections
 
     def _has_schedule_conflict(
             self,
