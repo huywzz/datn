@@ -316,6 +316,31 @@ export async function getMySchedule(): Promise<MyScheduleData> {
   }
 }
 
+export async function suggestTimetable(preferences: string): Promise<CourseSection[]> {
+  try {
+    const response = await api.post<CourseSectionsResponse>('/registrations/suggest-timetable', {
+      preferences,
+    })
+
+    if (!response.data?.success) {
+      throw new Error(response.data?.message || 'Không thể lấy đề xuất thời khóa biểu.')
+    }
+
+    if (!response.data.data) {
+      return []
+    }
+
+    // Handle both array and paginated response
+    const sections = Array.isArray(response.data.data)
+      ? response.data.data
+      : response.data.data.data || []
+
+    return sections
+  } catch (error) {
+    handleApiError(error, 'Không thể lấy đề xuất thời khóa biểu')
+  }
+}
+
 export async function getSectionOfStudent(): Promise<CourseSection[]> {
   try {
     const response = await api.get<CourseSection[] | { success: boolean; data?: CourseSection[]; message?: string }>('/registrations/section-of-student')

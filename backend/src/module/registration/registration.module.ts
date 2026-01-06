@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ConfigModule } from '@nestjs/config';
 import { MysqlProviderModule } from 'src/provider';
 import { RegistrationController } from './controller/registration.controller';
 import { ExchangeRequestController } from './controller/exchange-request.controller';
@@ -25,6 +26,7 @@ import { ExchangeValidationService } from './service/exchange-validation.service
     UserModule,
     CohortModule,
     ScheduleModule.forRoot(),
+    ConfigModule,
   ],
   controllers: [RegistrationController, ExchangeRequestController, ExchangeTransactionController],
   providers: [

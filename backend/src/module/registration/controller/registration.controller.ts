@@ -2,6 +2,7 @@ import { Controller, Post, Get, Body, Param, ParseIntPipe, UseGuards, Put, Forbi
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RegistrationService } from '../service/registration.service';
 import { CreateRegistrationDto } from '../dto/registration.dto';
+import { SuggestTimetableDto } from '../dto/suggest-timetable.dto';
 import { Registration } from '../entities/registration.entity';
 import { SWAGGER_JWT } from 'src/common/constant/global';
 import { JwtAuthGuard } from 'src/module/auth/guard/jwt.guard';
@@ -36,6 +37,19 @@ export class RegistrationController {
   @ApiResponse({ status: 200, description: 'Student class schedule' })
   async getMySchedule(@CurrentUser() user: User) {
     return await this.registrationService.getMySchedule(user);
+  }
+
+  @Post('suggest-timetable')
+  @ApiOperation({ summary: 'Get suggested timetable based on student preferences' })
+  @ApiResponse({ status: 200, description: 'Suggested timetable with course sections' })
+  async suggestTimetable(
+    @Body() suggestTimetableDto: SuggestTimetableDto,
+    @CurrentUser() user: User
+  ) {
+    return await this.registrationService.suggestTimetable(
+      user,
+      suggestTimetableDto.preferences || ''
+    );
   }
 
   @Get('/section-of-student')

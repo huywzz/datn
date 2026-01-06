@@ -20,6 +20,7 @@ import { Route as CommonReportsRouteImport } from './routes/_common/reports'
 import { Route as CommonProfileRouteImport } from './routes/_common/profile'
 import { Route as CommonCourseRegistrationRouteImport } from './routes/_common/course-registration'
 import { Route as CommonClassesRouteImport } from './routes/_common/classes'
+import { Route as AuthenticatedSuggestTimetableRouteImport } from './routes/_authenticated/suggest-timetable'
 import { Route as AuthenticatedStudentScheduleRouteImport } from './routes/_authenticated/student-schedule'
 import { Route as AuthenticatedCreditRegistrationRouteImport } from './routes/_authenticated/credit-registration'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
@@ -114,6 +115,12 @@ const CommonClassesRoute = CommonClassesRouteImport.update({
   path: '/classes',
   getParentRoute: () => CommonRoute,
 } as any)
+const AuthenticatedSuggestTimetableRoute =
+  AuthenticatedSuggestTimetableRouteImport.update({
+    id: '/suggest-timetable',
+    path: '/suggest-timetable',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedStudentScheduleRoute =
   AuthenticatedStudentScheduleRouteImport.update({
     id: '/student-schedule',
@@ -343,6 +350,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/credit-registration': typeof AuthenticatedCreditRegistrationRoute
   '/student-schedule': typeof AuthenticatedStudentScheduleRoute
+  '/suggest-timetable': typeof AuthenticatedSuggestTimetableRoute
   '/classes': typeof CommonClassesRoute
   '/course-registration': typeof CommonCourseRegistrationRoute
   '/profile': typeof CommonProfileRoute
@@ -388,6 +396,7 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/credit-registration': typeof AuthenticatedCreditRegistrationRoute
   '/student-schedule': typeof AuthenticatedStudentScheduleRoute
+  '/suggest-timetable': typeof AuthenticatedSuggestTimetableRoute
   '/classes': typeof CommonClassesRoute
   '/course-registration': typeof CommonCourseRegistrationRoute
   '/profile': typeof CommonProfileRoute
@@ -440,6 +449,7 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/credit-registration': typeof AuthenticatedCreditRegistrationRoute
   '/_authenticated/student-schedule': typeof AuthenticatedStudentScheduleRoute
+  '/_authenticated/suggest-timetable': typeof AuthenticatedSuggestTimetableRoute
   '/_common/classes': typeof CommonClassesRoute
   '/_common/course-registration': typeof CommonCourseRegistrationRoute
   '/_common/profile': typeof CommonProfileRoute
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/credit-registration'
     | '/student-schedule'
+    | '/suggest-timetable'
     | '/classes'
     | '/course-registration'
     | '/profile'
@@ -535,6 +546,7 @@ export interface FileRouteTypes {
     | '/503'
     | '/credit-registration'
     | '/student-schedule'
+    | '/suggest-timetable'
     | '/classes'
     | '/course-registration'
     | '/profile'
@@ -586,6 +598,7 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/credit-registration'
     | '/_authenticated/student-schedule'
+    | '/_authenticated/suggest-timetable'
     | '/_common/classes'
     | '/_common/course-registration'
     | '/_common/profile'
@@ -713,6 +726,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/classes'
       preLoaderRoute: typeof CommonClassesRouteImport
       parentRoute: typeof CommonRoute
+    }
+    '/_authenticated/suggest-timetable': {
+      id: '/_authenticated/suggest-timetable'
+      path: '/suggest-timetable'
+      fullPath: '/suggest-timetable'
+      preLoaderRoute: typeof AuthenticatedSuggestTimetableRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/student-schedule': {
       id: '/_authenticated/student-schedule'
@@ -1040,6 +1060,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedCreditRegistrationRoute: typeof AuthenticatedCreditRegistrationRoute
   AuthenticatedStudentScheduleRoute: typeof AuthenticatedStudentScheduleRoute
+  AuthenticatedSuggestTimetableRoute: typeof AuthenticatedSuggestTimetableRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedCoursesCourseIdRoute: typeof AuthenticatedCoursesCourseIdRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
@@ -1059,6 +1080,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedCreditRegistrationRoute: AuthenticatedCreditRegistrationRoute,
   AuthenticatedStudentScheduleRoute: AuthenticatedStudentScheduleRoute,
+  AuthenticatedSuggestTimetableRoute: AuthenticatedSuggestTimetableRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedCoursesCourseIdRoute: AuthenticatedCoursesCourseIdRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,

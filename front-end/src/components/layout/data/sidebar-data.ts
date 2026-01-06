@@ -67,6 +67,11 @@ export const sidebarData: SidebarData = {
           icon: CalendarCheck,
         },
         {
+          title: 'Đề xuất thời khóa biểu',
+          url: '/suggest-timetable',
+          icon: CalendarCheck,
+        },
+        {
           title: 'Hiệu chỉnh đăng ký',
           icon: ArrowLeftRight,
           items: [

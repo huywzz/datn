@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Registration } from '../entities/registration.entity';
 import { RegistrationRepository } from '../repository/registration.repository';
 import { CreateRegistrationDto } from '../dto/registration.dto';
@@ -11,6 +12,7 @@ import { CourseSection } from 'src/module/course/entities/course-section.entity'
 import { CourseRegistrationPeriodRepository } from 'src/module/cohort/repository/course-registration-period.repository';
 import { RegistrationValidationService } from './registration-validation.service';
 import { RedisProviderService } from '../../../provider/redis/redis-provider.service';
+import { CourseSectionService } from 'src/module/course/service/course-section.service';
 import Redis from 'ioredis';
 
 @Injectable()
@@ -24,6 +26,8 @@ export class RegistrationService {
     private readonly studentRepository: StudentRepository,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly registrationValidationService: RegistrationValidationService,
+    private readonly courseSectionService: CourseSectionService,
+    private readonly configService: ConfigService,
     redisService: RedisProviderService,
   ) {
     this.redis = redisService.getClient();
@@ -283,6 +287,91 @@ export class RegistrationService {
         course: true,
       }
     });
+  }
+
+  /**
+   * Suggest timetable based on student preferences
+   * @param user - Current user
+   * @param preferences - Student preferences for timetable
+   * @returns Suggested timetable with course sections
+   */
+  async suggestTimetable(user: User, preferences: string = '') {
+    const foundStudent = await this.studentRepository.findOne({
+      where: { userId: user.userId },
+    });
+
+    if (!foundStudent) {
+      throw new BadRequestException('Sinh viên không tồn tại!');
+    }
+
+    // Get all course sections (same as findAll)
+    const allCourseSections = await this.courseSectionService.findAll();
+
+    // Call Python API for suggestions
+    const suggestServiceUrl = this.configService.get<string>('SUGGEST_SERVICE_URL') || process.env.SUGGEST_SERVICE_URL;
+    
+    if (!suggestServiceUrl) {
+      throw new BadRequestException('Suggest service URL not configured. Please set SUGGEST_SERVICE_URL in .env file');
+    }
+
+    try {
+      const response = await fetch(`${suggestServiceUrl}/suggest-timetable`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseSections: allCourseSections,
+          studentPreferences: preferences,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new BadRequestException(`Suggest service error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.sectionIds || result.sectionIds.length === 0) {
+        return [];
+      }
+
+      // Get suggested sections by IDs from allCourseSections
+      const suggestedSectionIds = result.sectionIds as number[];
+      const suggestedSectionIdsSet = new Set(suggestedSectionIds);
+      const suggestedSections = allCourseSections.filter(
+        section => 
+          suggestedSectionIdsSet.has(section.sectionId) &&
+          section.semesterId === foundStudent.currentSemester
+      );
+
+      // Kiểm tra xung đột lịch học giữa các section
+      for (let i = 0; i < suggestedSections.length; i++) {
+        if (!suggestedSections[i]) continue;
+        
+        for (let j = i + 1; j < suggestedSections.length; j++) {
+          if (!suggestedSections[j]) continue;
+          
+          const hasConflict = await this.courseSectionRepository.hasScheduleConflict(
+            suggestedSections[i],
+            suggestedSections[j]
+          );
+          
+          if (hasConflict) {
+            throw new BadRequestException(
+              `Phát hiện xung đột lịch học giữa lớp học phần ${suggestedSections[i].sectionCode} và ${suggestedSections[j].sectionCode}`
+            );
+          }
+        }
+      }
+
+      return suggestedSections.filter((section): section is CourseSection => !!section);
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException(`Failed to get suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 }
 
