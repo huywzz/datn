@@ -327,7 +327,25 @@ export class RegistrationService {
       });
 
       if (!response.ok) {
-        throw new BadRequestException(`Suggest service error: ${response.statusText}`);
+        // Đọc response body để lấy message lỗi chi tiết từ Python service
+        let errorMessage = `Suggest service error: ${response.statusText}`;
+        try {
+          const errorBody = await response.json();
+          if (errorBody.message || errorBody.error || errorBody.detail) {
+            errorMessage = errorBody.message || errorBody.error || errorBody.detail;
+          }
+        } catch {
+          // Nếu không parse được JSON, thử đọc dưới dạng text
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              errorMessage = errorText;
+            }
+          } catch {
+            // Giữ nguyên errorMessage mặc định
+          }
+        }
+        throw new BadRequestException(errorMessage);
       }
 
       const result = await response.json();
