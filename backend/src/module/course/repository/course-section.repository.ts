@@ -69,12 +69,12 @@ export class CourseSectionRepository extends Repository<CourseSection> {
   }
 
   /**
-   * Lấy số lượng sinh viên đã đăng ký từ Redis list
+   * Lấy số lượng sinh viên đã đăng ký từ Redis set
    * Key format: course-section:registered:students:{sectionId}
    */
   private async getRegisteredStudentCount(sectionId: number): Promise<number> {
-    const listKey = `course-section:registered:students:${sectionId}`;
-    const count = await this.redis.llen(listKey);
+    const setKey = `course-section:registered:students:${sectionId}`;
+    const count = await this.redis.scard(setKey);
     return count;
   }
 

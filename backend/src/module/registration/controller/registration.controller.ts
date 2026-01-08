@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param, ParseIntPipe, UseGuards, Put, ForbiddenException, Delete } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, ParseIntPipe, UseGuards, Put, ForbiddenException, Delete, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { RegistrationService } from '../service/registration.service';
 import { CreateRegistrationDto } from '../dto/registration.dto';
@@ -70,8 +70,15 @@ export class RegistrationController {
   @Delete(':id')
   @ApiOperation({ summary: 'Cancel registration' })
   @ApiResponse({ status: 200, description: 'Registration cancelled successfully' })
-  async cancel(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: User) {
-    return await this.registrationService.cancel(id, user);
+  async cancel(
+    @Param('id') id: string,
+    @CurrentUser() user: User,
+    @Query('sectionId') sectionId?: string
+  ) {
+    // Nếu id là '0' hoặc rỗng và có sectionId, thì chỉ dùng sectionId
+    const registrationId = id && id !== '0' ? parseInt(id, 10) : undefined;
+    const sectionIdNum = sectionId ? parseInt(sectionId, 10) : undefined;
+    return await this.registrationService.cancel(registrationId, sectionIdNum, user);
   }
 }
 

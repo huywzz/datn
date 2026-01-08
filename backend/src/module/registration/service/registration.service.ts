@@ -74,6 +74,20 @@ export class RegistrationService {
         createRegistrationDto.sectionId,
       );
 
+    // Lưu hashMap courseId -> courseSection vào Redis cho sinh viên trong học kỳ hiện tại
+    const hashKey = this.getCourseHashKey(foundStudent.id, foundStudent.currentSemester);
+    await this.redis.hset(
+      hashKey,
+      foundCourseSection.courseId.toString(),
+      JSON.stringify(foundCourseSection),
+    );
+
+    // Thêm studentId vào Redis set để đếm số lượng sinh viên đã đăng ký
+    const setKey = `course-section:registered:students:${foundCourseSection.sectionId}`;
+    await this.redis.sadd(setKey, foundStudent.id.toString());
+
+    return [];
+
     // Thực hiện transaction: tạo registration và tăng currentStudents
     return await this.dataSource.transaction(async (manager: EntityManager) => {
       // Kiểm tra lại currentStudents trong transaction với pessimistic lock để tránh race condition
@@ -119,7 +133,12 @@ export class RegistrationService {
         JSON.stringify(foundCourseSection),
       );
 
+      // Thêm studentId vào Redis set để đếm số lượng sinh viên đã đăng ký
+      const setKey = `course-section:registered:students:${foundCourseSection.sectionId}`;
+      await this.redis.sadd(setKey, foundStudent.id.toString());
+
       // Load lại registration với relations để trả về đầy đủ thông tin
+      return [];
       return await manager.findOne(Registration, {
         where: { registrationId: savedRegistration.registrationId },
         relations: ['student', 'section'],
@@ -163,42 +182,100 @@ export class RegistrationService {
       throw new BadRequestException('Sinh viên không tồn tại!');
     }
 
-    const registrations = await this.registrationRepository.find({
-      where: {
-        student: {
-          userId: user.userId,
-        },
-        section: {
-          semesterId: foundStudent.currentSemester,
-        },
-        status: 'active',
-      },
-      relations: {
-        section: {
-          classSchedules: true,
-          course: true,
-        },
-      },
-    });
+    // Lấy danh sách CourseSection đã đăng ký từ Redis cache
+    const registeredSections = await this.courseSectionRepository.getStudentRegisteredSectionsFromCache(
+      foundStudent.id,
+      foundStudent.currentSemester,
+    );
 
-    // Flatten và format lịch học với thông tin section
-    const schedules = registrations
-      .filter(reg => reg.section?.classSchedules && reg.section.classSchedules.length > 0)
-      .flatMap(registration =>
-        registration.section.classSchedules.map(schedule => ({
-          registrationId: registration.registrationId,
+    // Nếu không có trong cache, fallback về query database
+    if (!registeredSections || registeredSections.length === 0) {
+      const registrations = await this.registrationRepository.find({
+        where: {
+          student: {
+            userId: user.userId,
+          },
+          section: {
+            semesterId: foundStudent.currentSemester,
+          },
+          status: 'active',
+        },
+        relations: {
+          section: {
+            classSchedules: true,
+            course: true,
+          },
+        },
+      });
+
+      // Flatten và format lịch học với thông tin section
+      const schedules = registrations
+        .filter(reg => reg.section?.classSchedules && reg.section.classSchedules.length > 0)
+        .flatMap(registration =>
+          registration.section.classSchedules.map(schedule => ({
+            registrationId: registration.registrationId,
+            scheduleId: schedule.scheduleId,
+            dayOfWeek: schedule.dayOfWeek,
+            startPeriod: schedule.startPeriod,
+            endPeriod: schedule.endPeriod,
+            room: schedule.room,
+            section: {
+              sectionId: registration.section.sectionId,
+              sectionCode: registration.section.sectionCode,
+              courseId: registration.section.courseId,
+              courseName: registration.section.course?.name || null,
+              courseCode: registration.section.course?.code || null,
+              instructorId: registration.section.instructorId,
+            },
+          })),
+        );
+
+      return {
+        studentId: foundStudent.id,
+        studentCode: foundStudent.studentCode,
+        fullName: foundStudent.fullName,
+        currentSemester: foundStudent.currentSemester,
+        schedules,
+      };
+    }
+
+    // Load thêm course relation nếu thiếu và đảm bảo có classSchedules
+    const sectionsWithRelations = await Promise.all(
+      registeredSections.map(async (section) => {
+        // Nếu thiếu classSchedules hoặc course, load thêm từ DB
+        if (!section.classSchedules || !section.course) {
+          const fullSection = await this.courseSectionRepository.findOne({
+            where: { sectionId: section.sectionId },
+            relations: {
+              classSchedules: true,
+              course: true,
+            },
+          });
+          return fullSection || section;
+        }
+        return section;
+      }),
+    );
+
+    // Flatten và format lịch học với thông tin section từ Redis cache
+    const schedules = sectionsWithRelations
+      .filter((section): section is CourseSection => !!section)
+      .filter(section => section.classSchedules && section.classSchedules.length > 0)
+      .flatMap(section =>
+        section.classSchedules.map(schedule => ({
+          registrationId: null, // Không có registrationId từ cache
           scheduleId: schedule.scheduleId,
           dayOfWeek: schedule.dayOfWeek,
           startPeriod: schedule.startPeriod,
           endPeriod: schedule.endPeriod,
           room: schedule.room,
           section: {
-            sectionId: registration.section.sectionId,
-            sectionCode: registration.section.sectionCode,
-            courseId: registration.section.courseId,
-            courseName: registration.section.course?.name || null,
-            courseCode: registration.section.course?.code || null,
-            instructorId: registration.section.instructorId,
+            sectionId: section.sectionId,
+            sectionCode: section.sectionCode,
+            courseId: section.courseId,
+            courseName: section.course?.name || null,
+            courseCode: section.course?.code || null,
+            instructorId: section.instructorId,
           },
         })),
       );
@@ -216,14 +293,66 @@ export class RegistrationService {
 
   /**
    * Cancel registration
-   * @param registrationId - Registration ID
+   * @param registrationId - Registration ID (optional)
+   * @param sectionId - Section ID (optional)
    * @param user - Current user requesting cancellation
    */
-  async cancel(registrationId: number, user: User): Promise<void> {
-    const registration = await this.registrationRepository.findOne({
-      where: { registrationId },
-      relations: ['student', 'section'],
-    });
+  async cancel(registrationId: number | undefined, sectionId: number | undefined, user: User): Promise<void> {
+    let registration: Registration | null = null;
+
+    // Tìm registration bằng registrationId hoặc sectionId
+    if (registrationId) {
+      registration = await this.registrationRepository.findOne({
+        where: { registrationId },
+        relations: ['student', 'section'],
+      });
+    } else if (sectionId) {
+      // Tìm registration bằng sectionId và studentId
+      const student = await this.studentRepository.findOne({
+        where: { userId: user.userId },
+      });
+
+      if (!student) {
+        throw new BadRequestException('Sinh viên không tồn tại!');
+      }
+
+      registration = await this.registrationRepository.findOne({
+        where: {
+          sectionId,
+          studentId: student.id,
+        },
+        relations: ['student', 'section'],
+      });
+    }
+
+    // Nếu chỉ có sectionId mà không tìm thấy registration, tạm thời xóa Redis trực tiếp
+    if (!registration && sectionId) {
+      const student = await this.studentRepository.findOne({
+        where: { userId: user.userId },
+      });
+
+      if (!student) {
+        throw new BadRequestException('Sinh viên không tồn tại!');
+      }
+
+      // Lấy thông tin section để có courseId
+      const section = await this.courseSectionRepository.findOne({
+        where: { sectionId },
+        relations: ['course'],
+      });
+
+      if (section) {
+        // Xoá courseSection tương ứng khỏi Redis hashMap courseId -> courseSection
+        const hashKey = this.getCourseHashKey(student.id, student.currentSemester);
+        await this.redis.hdel(hashKey, section.courseId.toString());
+      }
+
+      // Xóa studentId khỏi Redis set để cập nhật số lượng sinh viên đã đăng ký
+      const setKey = `course-section:registered:students:${sectionId}`;
+      await this.redis.srem(setKey, student.id.toString());
+
+      return;
+    }
 
     if (!registration) {
       throw new BadRequestException('Đăng ký không tồn tại!');
@@ -241,32 +370,53 @@ export class RegistrationService {
       }
     }
 
-    await this.dataSource.transaction(async (manager: EntityManager) => {
-      // Lock section to update student count
-      const section = await manager
-        .createQueryBuilder(CourseSection, 'section')
-        .setLock('pessimistic_write')
-        .where('section.sectionId = :sectionId', { sectionId: registration.sectionId })
-        .getOne();
-
-      if (section) {
-        await manager.update(
-          CourseSection,
-          { sectionId: section.sectionId },
-          { currentStudents: Math.max(section.currentStudents - 1, 0) },
-        );
-      }
-
-      // Soft delete registration
-      await manager.softDelete(Registration, registrationId);
-    });
-
     // Xoá courseSection tương ứng khỏi Redis hashMap courseId -> courseSection
     // Hash key: registration:student:{studentId}:semester:{semesterId}:courses
     if (registration.section?.courseId) {
       const hashKey = this.getCourseHashKey(registration.studentId, registration.semester);
       await this.redis.hdel(hashKey, registration.section.courseId.toString());
     }
+
+    // Xóa studentId khỏi Redis set để cập nhật số lượng sinh viên đã đăng ký
+    if (registration.sectionId) {
+      const setKey = `course-section:registered:students:${registration.sectionId}`;
+      await this.redis.srem(setKey, registration.studentId.toString());
+    }
+
+    return;
+
+    // await this.dataSource.transaction(async (manager: EntityManager) => {
+    //   // Lock section to update student count
+    //   const section = await manager
+    //     .createQueryBuilder(CourseSection, 'section')
+    //     .setLock('pessimistic_write')
+    //     .where('section.sectionId = :sectionId', { sectionId: registration.sectionId })
+    //     .getOne();
+    //
+    //   if (section) {
+    //     await manager.update(
+    //       CourseSection,
+    //       { sectionId: section.sectionId },
+    //       { currentStudents: Math.max(section.currentStudents - 1, 0) },
+    //     );
+    //   }
+    //
+    //   // Soft delete registration
+    //   await manager.softDelete(Registration, registrationId);
+    // });
+    //
+    // // Xoá courseSection tương ứng khỏi Redis hashMap courseId -> courseSection
+    // // Hash key: registration:student:{studentId}:semester:{semesterId}:courses
+    // if (registration.section?.courseId) {
+    //   const hashKey = this.getCourseHashKey(registration.studentId, registration.semester);
+    //   await this.redis.hdel(hashKey, registration.section.courseId.toString());
+    // }
+    //
+    // // Xóa studentId khỏi Redis set để cập nhật số lượng sinh viên đã đăng ký
+    // if (registration.sectionId) {
+    //   const setKey = `course-section:registered:students:${registration.sectionId}`;
+    //   await this.redis.srem(setKey, registration.studentId.toString());
+    // }
   }
 
   async getSectionOfStudent(userId: number): Promise<CourseSection[]> {

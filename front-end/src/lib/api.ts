@@ -528,9 +528,20 @@ export async function deleteExchangeTransaction(transactionId: number): Promise<
   }
 }
 
-export async function deleteRegistration(registrationId: number): Promise<void> {
+export async function deleteRegistration(
+  registrationId: number | null | undefined,
+  sectionId?: number | null
+): Promise<void> {
   try {
-    await api.delete(`/registrations/${registrationId}`)
+    // Nếu không có cả 2 trường thì không gọi API
+    if (!registrationId && !sectionId) {
+      throw new Error('Cần có registrationId hoặc sectionId để hủy đăng ký')
+    }
+
+    // Sử dụng registrationId nếu có, nếu không thì dùng sectionId
+    const id = registrationId || 0
+    const params = sectionId ? `?sectionId=${sectionId}` : ''
+    await api.delete(`/registrations/${id}${params}`)
   } catch (error) {
     handleApiError(error, 'Hủy đăng ký lớp học phần thất bại')
   }

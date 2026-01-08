@@ -348,10 +348,14 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     const subjectCodeToRemove = cell.subject.code
     const registrationId = cell.registrationId
 
-    if (registrationId) {
-      setRemovingRegistrationIds((prev) => new Set(prev).add(registrationId))
+    // Gọi API nếu có registrationId hoặc sectionId
+    if (registrationId || sectionIdToRemove) {
+      const sectionIdNum = sectionIdToRemove ? Number(sectionIdToRemove) : undefined
+      const loadingKey = registrationId || sectionIdNum || 0
+      
+      setRemovingRegistrationIds((prev) => new Set(prev).add(loadingKey))
       try {
-        await deleteRegistration(registrationId)
+        await deleteRegistration(registrationId, sectionIdNum)
         toast.success(`Đã xóa ${cell.subject.name} khỏi thời khóa biểu`)
         await syncScheduleFromServer()
       } catch (error) {
@@ -360,7 +364,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
       } finally {
         setRemovingRegistrationIds((prev) => {
           const next = new Set(prev)
-          next.delete(registrationId)
+          next.delete(loadingKey)
           return next
         })
       }
@@ -703,11 +707,13 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                                   className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md transition-all hover:scale-110 z-20"
                                   onClick={() => removeFromSchedule(day, period)}
                                   disabled={
-                                    !!cell.registrationId && removingRegistrationIds.has(cell.registrationId)
+                                    (cell.registrationId && removingRegistrationIds.has(cell.registrationId)) ||
+                                    (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId)))
                                   }
                                   title="Xóa môn học"
                                 >
-                                  {cell.registrationId && removingRegistrationIds.has(cell.registrationId) ? (
+                                  {(cell.registrationId && removingRegistrationIds.has(cell.registrationId)) ||
+                                  (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId))) ? (
                                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
                                   ) : (
                                     <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

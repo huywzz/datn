@@ -38,6 +38,7 @@ export class RegistrationValidationService {
       relations: {
         classSchedules: true,
         semester: true,
+        course: true,
       },
     });
 

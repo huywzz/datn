@@ -139,13 +139,17 @@ class StressTestClient:
                     error_msg = e.response.text or str(e)
             return {"error": error_msg}
     
-    def cancel_registration(self, registration_id: int) -> bool:
-        """Hủy đăng ký"""
+    def cancel_registration(self, registration_id: Optional[int] = None, section_id: Optional[int] = None) -> bool:
+        """Hủy đăng ký bằng registrationId hoặc sectionId"""
         try:
-            response = self.session.delete(
-                f"{self.base_url}/registrations/{registration_id}",
-                timeout=10
-            )
+            # Sử dụng registrationId nếu có, nếu không thì dùng 0 và truyền sectionId qua query param
+            reg_id = registration_id if registration_id else 0
+            url = f"{self.base_url}/registrations/{reg_id}"
+            
+            if section_id:
+                url += f"?sectionId={section_id}"
+            
+            response = self.session.delete(url, timeout=10)
             response.raise_for_status()
             return True
         except Exception as e:
@@ -156,22 +160,23 @@ class StressTestClient:
                     error_msg = error_data.get('message', error_data.get('error', str(e)))
                 except:
                     error_msg = e.response.text or str(e)
-            print(f"❌ Lỗi hủy đăng ký {registration_id}: {error_msg}")
+            print(f"❌ Lỗi hủy đăng ký (reg_id={registration_id}, section_id={section_id}): {error_msg}")
             return False
     
-    def execute_full_registration_flow(self) -> Tuple[bool, float, Optional[int]]:
+    def execute_full_registration_flow(self) -> Tuple[bool, float, Optional[int], Optional[int]]:
         """
         Thực hiện flow đăng ký đầy đủ từ đầu đến cuối
-        Returns: (success, duration, registration_id)
+        Returns: (success, duration, registration_id, section_id)
         """
         start_time = time.time()
         registration_id = None
+        section_id = None
         
         try:
             # Bước 1: Xem lịch học hiện tại
             schedule = self.get_my_schedule()
             if schedule is None:
-                return (False, time.time() - start_time, None)
+                return (False, time.time() - start_time, None, None)
             
             # Lấy danh sách các courseId đã đăng ký từ lịch học
             registered_course_ids = set()
@@ -189,7 +194,7 @@ class StressTestClient:
             courses = self.get_available_courses()
             if not courses or len(courses) == 0:
                 print("⚠️  Không có môn học nào có sẵn")
-                return (False, time.time() - start_time, None)
+                return (False, time.time() - start_time, None, None)
             
             # Lọc ra các môn học chưa đăng ký
             unregistered_courses = []
@@ -210,7 +215,7 @@ class StressTestClient:
             
             if not unregistered_courses:
                 print("⚠️  Không có môn học nào để đăng ký")
-                return (False, time.time() - start_time, None)
+                return (False, time.time() - start_time, None, None)
             
             # Bước 3: Chọn môn học ngẫu nhiên từ danh sách chưa đăng ký
             selected_course = random.choice(unregistered_courses)
@@ -222,17 +227,17 @@ class StressTestClient:
             
             if not course_id:
                 print(f"⚠️  Không tìm thấy courseId trong: {selected_course}")
-                return (False, time.time() - start_time, None)
+                return (False, time.time() - start_time, None, None)
             
             sections_data = self.get_course_sections(course_id)
             if not sections_data:
-                return (False, time.time() - start_time, None)
+                return (False, time.time() - start_time, None, None)
             
             # Lấy danh sách sections
             sections = sections_data.get('data', []) if isinstance(sections_data, dict) else sections_data
             if not isinstance(sections, list) or len(sections) == 0:
                 print("⚠️  Không có lớp học phần nào có sẵn")
-                return (False, time.time() - start_time, None)
+                return (False, time.time() - start_time, None, None)
             
             # Tìm các section có status 'open' và chưa đầy
             available_sections = []
@@ -254,23 +259,28 @@ class StressTestClient:
             section_id = available_section.get('sectionId')
             if not section_id:
                 print(f"⚠️  Không tìm thấy sectionId trong: {available_section}")
-                return (False, time.time() - start_time, None)
+                return (False, time.time() - start_time, None, None)
             
             # Bước 4: Đăng ký học phần
             registration_result = self.register_section(section_id)
-            if registration_result and 'error' not in registration_result:
-                registration_id = registration_result.get('registrationId') or registration_result.get('id')
+            # Nếu không có error trong result và response không throw exception thì coi như thành công
+            # (có thể response thành công nhưng không có data, vẫn là hợp lệ)
+            if registration_result is None or 'error' not in registration_result:
+                # Lấy registrationId nếu có trong response
+                if registration_result and isinstance(registration_result, dict):
+                    registration_id = registration_result.get('registrationId') or registration_result.get('id')
+                # section_id đã được lưu ở trên, giữ lại để dùng cho hủy đăng ký
                 duration = time.time() - start_time
-                return (True, duration, registration_id)
+                return (True, duration, registration_id, section_id)
             else:
                 error = registration_result.get('error', 'Unknown error') if registration_result else 'No response'
                 print(f"⚠️  Đăng ký thất bại: {error}")
                 duration = time.time() - start_time
-                return (False, duration, None)
+                return (False, duration, None, None)
                 
         except Exception as e:
             print(f"❌ Lỗi trong flow đăng ký: {e}")
-            return (False, time.time() - start_time, None)
+            return (False, time.time() - start_time, None, None)
 
 
 def run_stress_test(
@@ -317,14 +327,15 @@ def run_stress_test(
         iteration_start_time = time.time()
         
         # Thực hiện flow đăng ký
-        success, duration, registration_id = client.execute_full_registration_flow()
+        success, duration, registration_id, section_id = client.execute_full_registration_flow()
         
-        if success and registration_id:
-            successful_registrations.append((iteration_num, registration_id))
+        if success:
+            if registration_id:
+                successful_registrations.append((iteration_num, registration_id))
             
-            # Hủy đăng ký ngay sau đó
+            # Hủy đăng ký ngay sau đó (dùng registrationId hoặc sectionId)
             cancel_start = time.time()
-            cancel_success = client.cancel_registration(registration_id)
+            cancel_success = client.cancel_registration(registration_id, section_id)
             cancel_duration = time.time() - cancel_start
             
             total_duration = time.time() - iteration_start_time
