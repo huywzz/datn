@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,8 @@ interface Section {
   teacher: string
   room: string
   meetings: Array<{ day: 'T2' | 'T3' | 'T4' | 'T5' | 'T6' | 'T7' | 'CN'; period: number; length: number }>
+  maxStudents?: number
+  currentStudents?: number
 }
 
 // Map dayOfWeek (0-6) to day format (CN, T2-T7)
@@ -97,6 +99,8 @@ const mapApiSectionToSection = (apiSection: ApiCourseSection, subjectCode: strin
     teacher,
     room,
     meetings,
+    maxStudents: apiSection.maxStudents,
+    currentStudents: apiSection.currentStudents,
   }
 }
 
@@ -127,6 +131,10 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
   const [registeringSectionIds, setRegisteringSectionIds] = useState<Set<number>>(new Set())
   const [removingRegistrationIds, setRemovingRegistrationIds] = useState<Set<number>>(new Set())
   const [hasSyncedInitialSchedule, setHasSyncedInitialSchedule] = useState(false)
+  const [subjectsCardHeight, setSubjectsCardHeight] = useState<number | undefined>(undefined)
+
+  // Refs to measure schedule card height
+  const scheduleCardRef = useRef<HTMLDivElement>(null)
 
   // Use shared hook with React Query caching
   const { subjects, isLoading, error } = useAvailableCourses()
@@ -183,6 +191,18 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
         setHasSyncedInitialSchedule(true)
       })()
   }, [subjects, hasSyncedInitialSchedule, syncScheduleFromServer])
+
+  // Sync subjects card height with schedule card height
+  useEffect(() => {
+    const updateHeight = () => {
+      if (scheduleCardRef.current) {
+        setSubjectsCardHeight(scheduleCardRef.current.offsetHeight)
+      }
+    }
+    updateHeight()
+    window.addEventListener('resize', updateHeight)
+    return () => window.removeEventListener('resize', updateHeight)
+  }, [isLoading])
 
   const handleDragStart = (e: React.DragEvent, section: Section) => {
     setDraggedSection(section)
@@ -352,7 +372,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     if (registrationId || sectionIdToRemove) {
       const sectionIdNum = sectionIdToRemove ? Number(sectionIdToRemove) : undefined
       const loadingKey = registrationId || sectionIdNum || 0
-      
+
       setRemovingRegistrationIds((prev) => new Set(prev).add(loadingKey))
       try {
         await deleteRegistration(registrationId, sectionIdNum)
@@ -517,16 +537,19 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Available Subjects */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:items-start">
+        {/* Available Subjects - height synced with schedule card */}
+        <Card
+          className="lg:col-span-1 flex flex-col"
+          style={{ height: subjectsCardHeight ? `${subjectsCardHeight}px` : 'auto' }}
+        >
+          <CardHeader className="flex-shrink-0">
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
               Môn học có sẵn
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-y-auto min-h-0">
             <div className="space-y-3">
               {subjects.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
@@ -610,6 +633,8 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                                 {/* Mã */}
                                 <div className="flex items-center gap-1">
                                   <span className="text-xs font-semibold">{sec.classCode}</span>
+                                  <span className="text-xs font-semibold">SL:</span>
+                                  <span className="text-xs font-semibold">{sec.currentStudents}/{sec.maxStudents}</span>
                                   {isRegistering && (
                                     <Loader2 className="h-3 w-3 animate-spin text-primary" />
                                   )}
@@ -661,7 +686,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
         </Card>
 
         {/* Schedule */}
-        <Card className="lg:col-span-3">
+        <Card ref={scheduleCardRef} className="lg:col-span-3 flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -713,7 +738,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                                   title="Xóa môn học"
                                 >
                                   {(cell.registrationId && removingRegistrationIds.has(cell.registrationId)) ||
-                                  (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId))) ? (
+                                    (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId))) ? (
                                     <Loader2 className="h-2.5 w-2.5 animate-spin" />
                                   ) : (
                                     <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
