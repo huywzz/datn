@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, EntityManager } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -618,6 +618,45 @@ return 2
       }
       throw new BadRequestException(`Failed to get suggestions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  /**
+   * Reset toàn bộ hệ thống đăng ký
+   * - Xóa tất cả keys trong Redis
+   * - Xóa toàn bộ registrations
+   * - Đặt lại currentStudents = 0 cho tất cả CourseSection
+   * @param user - Current user (phải là admin hoặc có password đúng)
+   * @param password - Password từ body (optional nếu là admin)
+   * @returns Message xác nhận
+   */
+  async reset(user: User, password?: string): Promise<{ message: string }> {
+    // Validate quyền: phải là admin HOẶC có password đúng
+    if (user.role !== 'admin' && password !== 'reset@2026') {
+      throw new ForbiddenException('Bạn không có quyền thực hiện thao tác này!');
+    }
+
+    return await this.dataSource.transaction(async (manager: EntityManager) => {
+      // 1. Xóa tất cả keys trong Redis
+      await this.redis.flushdb();
+
+      // 2. Xóa toàn bộ registrations (hard delete)
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from(Registration)
+        .execute();
+
+      // 3. Reset currentStudents = 0 cho tất cả CourseSection
+      await manager
+        .createQueryBuilder()
+        .update(CourseSection)
+        .set({ currentStudents: 0 })
+        .execute();
+
+      return {
+        message: 'Đã reset toàn bộ hệ thống đăng ký thành công!',
+      };
+    });
   }
 }
 

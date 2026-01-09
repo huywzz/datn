@@ -80,5 +80,16 @@ export class RegistrationController {
     const sectionIdNum = sectionId ? parseInt(sectionId, 10) : undefined;
     return await this.registrationService.cancel(registrationId, sectionIdNum, user);
   }
+
+  @Post('reset')
+  @ApiOperation({ summary: 'Reset toàn bộ hệ thống đăng ký (chỉ dành cho admin hoặc có password)' })
+  @ApiResponse({ status: 200, description: 'Reset thành công' })
+  @ApiResponse({ status: 403, description: 'Không có quyền thực hiện' })
+  async reset(
+    @Body() body: { password?: string },
+    @CurrentUser() user: User
+  ): Promise<{ message: string }> {
+    return await this.registrationService.reset(user, body.password);
+  }
 }
 
