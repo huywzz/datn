@@ -377,6 +377,7 @@ export class ExchangeValidationService {
         const section = await this.courseSectionRepository.findOne({
           where: { sectionId },
           relations: { course: true },
+          isCache: false
         });
 
         throw new BadRequestException(
