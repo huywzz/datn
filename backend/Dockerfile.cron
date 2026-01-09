@@ -1,0 +1,38 @@
+# ---------- Build stage ----------
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files trước để tận dụng cache
+COPY package*.json ./
+
+RUN npm ci
+
+# Copy source
+COPY . .
+
+# Build NestJS (ts -> dist)
+RUN npm run build
+
+
+# ---------- Production stage ----------
+FROM node:20-alpine
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy package files
+COPY package*.json ./
+
+# Chỉ cài dependency cần cho runtime
+RUN npm ci --omit=dev
+
+# Copy dist từ build stage
+COPY --from=builder /app/dist ./dist
+
+# Worker port (mặc định 8001)
+EXPOSE 8001
+
+# Chạy worker process thay vì main app
+CMD ["node", "dist/src/main-worker.js"]
