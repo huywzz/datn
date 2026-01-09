@@ -1,6 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { SchedulerRegistry } from '@nestjs/schedule';
+import { Injectable, Logger } from '@nestjs/common';
 import { ExchangeQueueService } from './exchange-queue.service';
 import { ExchangeTransactionService } from './exchange-transaction.service';
 import { ExchangeTransactionRepository } from '../repository/exchange-transaction.repository';
@@ -10,44 +8,15 @@ import { ExchangeTransactionStatus } from 'src/common/constant/enum';
  * Service để xử lý queue và matching các exchange transactions
  */
 @Injectable()
-export class ExchangeProcessorService implements OnModuleInit {
+export class ExchangeProcessorService {
   private readonly logger = new Logger(ExchangeProcessorService.name);
   private isProcessing = false;
-  private readonly intervalSeconds: number;
 
   constructor(
     private readonly queueService: ExchangeQueueService,
     private readonly transactionService: ExchangeTransactionService,
     private readonly transactionRepository: ExchangeTransactionRepository,
-    private readonly configService: ConfigService,
-    private readonly schedulerRegistry: SchedulerRegistry,
-  ) {
-    // Lấy interval từ env, mặc định là 60 giây
-    this.intervalSeconds = parseInt(
-      this.configService.get<string>('EXCHANGE_QUEUE_INTERVAL_TIME', '60'),
-      10,
-    );
-  }
-
-  /**
-   * Khởi tạo cron job với interval từ env khi module được load
-   */
-  onModuleInit() {
-    const intervalMs = this.intervalSeconds * 1000;
-    this.logger.log(`Khởi tạo queue processor với interval: ${this.intervalSeconds} giây`);
-
-    // Tạo interval để xử lý queue
-    const interval = setInterval(() => {
-      this.processQueue().catch(error => {
-        this.logger.error(`Lỗi trong interval processing: ${error.message}`);
-      });
-    }, intervalMs);
-
-    // Đăng ký interval với scheduler registry để có thể quản lý sau này
-    this.schedulerRegistry.addInterval('exchangeQueueProcessor', interval);
-
-    this.logger.log('Queue processor đã được khởi tạo thành công');
-  }
+  ) { }
 
   /**
    * Xử lý queue tự động theo interval từ env

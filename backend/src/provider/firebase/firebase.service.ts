@@ -15,6 +15,7 @@ export class FirebaseService {
   constructor(private readonly configService: ConfigService) {
     const firebaseConfigUrl = this.configService.get<string>('FIREBASE_CONFIG_URL');
     const firebaseAuthConfigUrl = this.configService.get<string>('FIREBASE_AUTH_CONFIG_URL');
+    console.log(firebaseConfigUrl, firebaseAuthConfigUrl);
 
     if (!firebaseConfigUrl || !firebaseAuthConfigUrl) {
       throw new Error('Thiếu FIREBASE_CONFIG_URL hoặc FIREBASE_AUTH_CONFIG_URL');
