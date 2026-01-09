@@ -17,6 +17,7 @@ import { UserModule } from '../user/user.module';
 import { CohortModule } from '../cohort/cohort.module';
 import { RegistrationValidationService } from './service/registration-validation.service';
 import { ExchangeValidationService } from './service/exchange-validation.service';
+import { SyncRegistrationService } from './service/sync-registration.service';
 
 @Module({
   imports: [
@@ -25,7 +26,6 @@ import { ExchangeValidationService } from './service/exchange-validation.service
     AuthModule,
     UserModule,
     CohortModule,
-    ScheduleModule.forRoot(),
     ConfigModule,
   ],
   controllers: [RegistrationController, ExchangeRequestController, ExchangeTransactionController],
@@ -37,6 +37,7 @@ import { ExchangeValidationService } from './service/exchange-validation.service
     ExchangeTransactionService,
     ExchangeQueueService,
     ExchangeProcessorService,
+    SyncRegistrationService,
     ...registrationProviders,
   ],
   exports: [
@@ -46,6 +47,7 @@ import { ExchangeValidationService } from './service/exchange-validation.service
     ExchangeValidationService,
     ExchangeQueueService,
     ExchangeProcessorService,
+    SyncRegistrationService,
   ],
 })
 export class RegistrationModule {}

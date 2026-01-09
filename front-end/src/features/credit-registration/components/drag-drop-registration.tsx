@@ -132,6 +132,8 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
   const [removingRegistrationIds, setRemovingRegistrationIds] = useState<Set<number>>(new Set())
   const [hasSyncedInitialSchedule, setHasSyncedInitialSchedule] = useState(false)
   const [subjectsCardHeight, setSubjectsCardHeight] = useState<number | undefined>(undefined)
+  const [highlightedCells, setHighlightedCells] = useState<Set<string>>(new Set())
+  const [conflictedCells, setConflictedCells] = useState<Set<string>>(new Set())
 
   // Refs to measure schedule card height
   const scheduleCardRef = useRef<HTMLDivElement>(null)
@@ -206,6 +208,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
 
   const handleDragStart = (e: React.DragEvent, section: Section) => {
     setDraggedSection(section)
+    setHighlightedCells(new Set())
     // Some browsers require dataTransfer to be set for drop to fire
     try {
       e.dataTransfer.setData('text/plain', section.id)
@@ -215,13 +218,73 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     e.dataTransfer.effectAllowed = 'move'
   }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, day: string, period: number) => {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
+    
+    // Calculate which cells will be occupied based on draggedSection's meetings
+    if (draggedSection && draggedSection.meetings && draggedSection.meetings.length > 0) {
+      const cellsToHighlight = new Set<string>()
+      const cellsWithConflict = new Set<string>()
+      
+      // Add all cells that will be occupied by this section's meetings
+      for (const m of draggedSection.meetings) {
+        const endP = m.period + m.length - 1
+        
+        // Check boundary
+        if (m.period < 1 || endP > periods.length) {
+          // Out of bounds - mark all cells as conflicted
+          for (let p = m.period; p <= endP; p++) {
+            if (p >= 1 && p <= periods.length) {
+              cellsToHighlight.add(`${m.day}-${p}`)
+              cellsWithConflict.add(`${m.day}-${p}`)
+            }
+          }
+          continue
+        }
+        
+        // Check conflicts with existing schedule
+        const dayMap = schedule[m.day] ?? {}
+        let hasConflict = false
+        
+        for (let p = m.period; p <= endP; p++) {
+          const cellKey = `${m.day}-${p}`
+          cellsToHighlight.add(cellKey)
+          
+          // Check if this cell is already occupied
+          const existingCell = dayMap[p]
+          if (existingCell) {
+            hasConflict = true
+            cellsWithConflict.add(cellKey)
+          }
+        }
+      }
+      
+      setHighlightedCells(cellsToHighlight)
+      setConflictedCells(cellsWithConflict)
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear highlight if leaving the schedule area entirely
+    const target = e.currentTarget as HTMLElement
+    const relatedTarget = e.relatedTarget as HTMLElement
+    if (!target.contains(relatedTarget)) {
+      setHighlightedCells(new Set())
+      setConflictedCells(new Set())
+    }
+  }
+
+  const handleDragEnd = () => {
+    setDraggedSection(null)
+    setHighlightedCells(new Set())
+    setConflictedCells(new Set())
   }
 
   const handleDrop = async (e: React.DragEvent, _dropDay: string, _dropPeriod: number) => {
     e.preventDefault()
+    setHighlightedCells(new Set())
+    setConflictedCells(new Set())
 
     if (!draggedSection) {
       return
@@ -328,6 +391,27 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
     try {
       await registerSection(sectionIdNum)
 
+      // Update currentStudents count for this section (optimistic update)
+      setSectionsBySubject((prev) => {
+        const newState = { ...prev }
+        const subjectCode = draggedSection.subjectCode
+        const sections = newState[subjectCode]
+        if (sections) {
+          newState[subjectCode] = sections.map((sec) => {
+            if (sec.id === draggedSection.id) {
+              const current = sec.currentStudents ?? 0
+              const max = sec.maxStudents ?? 0
+              return {
+                ...sec,
+                currentStudents: Math.min(current + 1, max),
+              }
+            }
+            return sec
+          })
+        }
+        return newState
+      })
+
       // Show success message with meeting details
       if (placedMeetings.length > 1) {
         toast.success(
@@ -376,6 +460,29 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
       setRemovingRegistrationIds((prev) => new Set(prev).add(loadingKey))
       try {
         await deleteRegistration(registrationId, sectionIdNum)
+        
+        // Update currentStudents count for this section (optimistic update)
+        if (sectionIdToRemove) {
+          setSectionsBySubject((prev) => {
+            const newState = { ...prev }
+            const subjectCode = subjectCodeToRemove
+            const sections = newState[subjectCode]
+            if (sections) {
+              newState[subjectCode] = sections.map((sec) => {
+                if (sec.id === sectionIdToRemove) {
+                  const current = sec.currentStudents ?? 0
+                  return {
+                    ...sec,
+                    currentStudents: Math.max(current - 1, 0),
+                  }
+                }
+                return sec
+              })
+            }
+            return newState
+          })
+        }
+        
         toast.success(`Đã xóa ${cell.subject.name} khỏi thời khóa biểu`)
         await syncScheduleFromServer()
       } catch (error) {
@@ -625,6 +732,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                                 key={sec.id}
                                 draggable={!isRegistering && !isRegistered}
                                 onDragStart={(e) => !isRegistering && !isRegistered && handleDragStart(e, sec)}
+                                onDragEnd={handleDragEnd}
                                 className={`p-2 rounded border bg-white transition-opacity space-y-1 ${isRegistering || isRegistered
                                   ? 'opacity-60 cursor-not-allowed'
                                   : 'cursor-grab active:cursor-grabbing'
@@ -694,7 +802,7 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" onDragLeave={handleDragLeave}>
               <div className="min-w-[600px]">
                 {/* Header */}
                 <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-2 mb-4">
@@ -715,43 +823,59 @@ export function DragDropRegistration({ registeredSubjects, onUpdateRegisteredSub
                     {days.map(day => {
                       const cell = schedule[day]?.[period]
                       const isDropZone = !cell
+                      const cellKey = `${day}-${period}`
+                      const isHighlighted = highlightedCells.has(cellKey)
+                      const isConflicted = conflictedCells.has(cellKey)
                       return (
                         <div
-                          key={`${day}-${period}`}
-                          className={`min-h-[70px] p-2 rounded border-2 transition-all duration-200 ${cell
-                            ? 'border-solid'
-                            : 'border-dashed border-muted-foreground/20 hover:border-primary/30 hover:bg-primary/5'
-                            }`}
-                          onDragOver={isDropZone ? handleDragOver : undefined}
+                          key={cellKey}
+                          className={`min-h-[70px] p-2 rounded border-2 transition-all duration-200 ${
+                            cell
+                              ? 'border-solid'
+                              : isHighlighted
+                                ? isConflicted
+                                  ? 'border-dashed border-red-500/70 bg-red-500/15'
+                                  : 'border-dashed border-primary/50 bg-primary/10'
+                                : 'border-dashed border-muted-foreground/20 hover:border-primary/30 hover:bg-primary/5'
+                          }`}
+                          onDragOver={isDropZone ? (e) => handleDragOver(e, day, period) : undefined}
                           onDrop={isDropZone ? (e) => handleDrop(e, day, period) : undefined}
                         >
                           {cell ? (
                             cell.isHead ? (
-                              <div className={`relative p-3 rounded-lg shadow-sm ${cell.color} border transition-all hover:shadow-md flex items-center justify-center`}>
-                                <button
-                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md transition-all hover:scale-110 z-20"
-                                  onClick={() => removeFromSchedule(day, period)}
-                                  disabled={
-                                    (cell.registrationId && removingRegistrationIds.has(cell.registrationId)) ||
-                                    (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId)))
-                                  }
-                                  title="Xóa môn học"
-                                >
-                                  {(cell.registrationId && removingRegistrationIds.has(cell.registrationId)) ||
-                                    (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId))) ? (
-                                    <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                                  ) : (
-                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                  )}
-                                </button>
+                              <div className={`relative p-3 rounded-lg shadow-sm ${cell.color} border transition-all hover:shadow-md flex items-center justify-center ${
+                                cell.sectionId && registeringSectionIds.has(Number(cell.sectionId)) ? 'opacity-60' : ''
+                              }`}>
+                                {!(cell.sectionId && registeringSectionIds.has(Number(cell.sectionId))) && (
+                                  <button
+                                    className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-red-500/90 hover:bg-red-600 text-white shadow-md transition-all hover:scale-110 z-20"
+                                    onClick={() => removeFromSchedule(day, period)}
+                                    disabled={
+                                      Boolean(
+                                        (cell.registrationId && removingRegistrationIds.has(cell.registrationId)) ||
+                                        (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId)))
+                                      )
+                                    }
+                                    title="Xóa môn học"
+                                  >
+                                    {(cell.registrationId && removingRegistrationIds.has(cell.registrationId)) ||
+                                      (cell.sectionId && removingRegistrationIds.has(Number(cell.sectionId))) ? (
+                                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                    ) : (
+                                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    )}
+                                  </button>
+                                )}
                                 <div className="font-bold text-sm !text-gray-900 text-center drop-shadow-sm">
                                   {cell.sectionCode || `${cell.subject.code} (no sectionCode)`}
                                 </div>
                               </div>
                             ) : (
-                              <div className={`p-3 rounded-lg shadow-sm ${cell.color} border min-h-[46px] transition-all`}></div>
+                              <div className={`p-3 rounded-lg shadow-sm ${cell.color} border min-h-[46px] transition-all ${
+                                cell.sectionId && registeringSectionIds.has(Number(cell.sectionId)) ? 'opacity-60' : ''
+                              }`}></div>
                             )
                           ) : (
                             <div className="text-xs text-muted-foreground/50 text-center pt-2">

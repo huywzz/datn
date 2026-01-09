@@ -14,7 +14,7 @@ export class RegistrationValidationService {
 
   /**
    * Kiểm tra thời gian đăng ký có đang mở không
-   * @throws BadRequestException nếu không có thời gian đăng ký đang mở
+   * @throws BadRequestException nếu không có thời gian đăng ký đang mở hoặc không trong thời gian đăng ký
    */
   async validateRegistrationPeriod(): Promise<void> {
     const foundCohortRegistrationSchedule = await this.courseRegistrationPeriodRepository.findOne({
@@ -22,7 +22,16 @@ export class RegistrationValidationService {
     });
 
     if (!foundCohortRegistrationSchedule) {
-      throw new BadRequestException('Không có đăng ký được!');
+      throw new BadRequestException('Không trong thời gian đăng ký');
+    }
+
+    // Kiểm tra thời gian hiện tại có nằm trong khoảng startTime và endTime không
+    const now = new Date();
+    const startTime = new Date(foundCohortRegistrationSchedule.startTime);
+    const endTime = new Date(foundCohortRegistrationSchedule.endTime);
+
+    if (now < startTime || now > endTime) {
+      throw new BadRequestException('Không trong thời gian đăng ký');
     }
   }
 

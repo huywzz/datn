@@ -28,6 +28,7 @@ export class RegistrationService {
     private readonly registrationValidationService: RegistrationValidationService,
     private readonly courseSectionService: CourseSectionService,
     private readonly configService: ConfigService,
+    private readonly courseRegistrationPeriodRepository: CourseRegistrationPeriodRepository,
     redisService: RedisProviderService,
   ) {
     this.redis = redisService.getClient();
@@ -39,6 +40,30 @@ export class RegistrationService {
    */
   private getCourseHashKey(studentId: number, semesterId: number): string {
     return `registration:student:${studentId}:semester:${semesterId}:courses`;
+  }
+
+  /**
+   * Kiểm tra xem hiện tại có đang trong thời gian đăng ký không
+   * @returns true nếu đang trong thời gian đăng ký (status = true và now >= startTime && now <= endTime)
+   */
+  private async isRegistrationPeriodActive(): Promise<boolean> {
+    try {
+      const period = await this.courseRegistrationPeriodRepository.findOne({
+        where: { status: true },
+      });
+
+      if (!period) {
+        return false;
+      }
+
+      const now = new Date();
+      const startTime = new Date(period.startTime);
+      const endTime = new Date(period.endTime);
+
+      return now >= startTime && now <= endTime;
+    } catch (error) {
+      return false;
+    }
   }
 
   /**
@@ -74,17 +99,64 @@ export class RegistrationService {
         createRegistrationDto.sectionId,
       );
 
-    // Lưu hashMap courseId -> courseSection vào Redis cho sinh viên trong học kỳ hiện tại
-    const hashKey = this.getCourseHashKey(foundStudent.id, foundStudent.currentSemester);
-    await this.redis.hset(
+    // Key Redis dùng cho kiểm tra & lưu registration (Lua script atomic)
+    const setKey = `course-section:registered:students:${foundCourseSection.sectionId}`;
+    const hashKey = this.getCourseHashKey(
+      foundStudent.id,
+      foundStudent.currentSemester,
+    );
+
+    /**
+     * Lua script thực hiện atomic:
+     * - return 0: lớp học phần đã đầy (SCARD >= maxStudents)
+     * - return 1: sinh viên đã đăng ký courseId này (HEXISTS hashKey courseId == 1)
+     * - return 2: thành công, đã SADD + HSET
+     */
+    const luaScript = `
+local setKey = KEYS[1]
+local hashKey = KEYS[2]
+
+local member = ARGV[1]
+local max = tonumber(ARGV[2])
+local courseId = ARGV[3]
+local sectionJson = ARGV[4]
+
+-- Nếu đã tồn tại courseId trong hash thì báo đã đăng ký
+if redis.call('HEXISTS', hashKey, courseId) == 1 then
+  return 1
+end
+
+-- Kiểm tra số lượng trong set
+local count = redis.call('SCARD', setKey)
+if count >= max then
+  return 0
+end
+
+-- Thêm vào set và hash
+redis.call('SADD', setKey, member)
+redis.call('HSET', hashKey, courseId, sectionJson)
+
+return 2
+`;
+
+    const luaResult = await this.redis.eval(
+      luaScript,
+      2, // số lượng KEYS
+      setKey,
       hashKey,
+      foundStudent.id.toString(),
+      foundCourseSection.maxStudents.toString(),
       foundCourseSection.courseId.toString(),
       JSON.stringify(foundCourseSection),
     );
 
-    // Thêm studentId vào Redis set để đếm số lượng sinh viên đã đăng ký
-    const setKey = `course-section:registered:students:${foundCourseSection.sectionId}`;
-    await this.redis.sadd(setKey, foundStudent.id.toString());
+    if (luaResult === 0) {
+      throw new BadRequestException('Lớp học phần đã đầy!');
+    }
+
+    if (luaResult === 1) {
+      throw new BadRequestException('Bạn đã đăng ký học phần này rồi!');
+    }
 
     return [];
 
@@ -182,13 +254,19 @@ export class RegistrationService {
       throw new BadRequestException('Sinh viên không tồn tại!');
     }
 
-    // Lấy danh sách CourseSection đã đăng ký từ Redis cache
-    const registeredSections = await this.courseSectionRepository.getStudentRegisteredSectionsFromCache(
-      foundStudent.id,
-      foundStudent.currentSemester,
-    );
+    // Chỉ lấy từ cache nếu đang trong thời gian đăng ký
+    const isRegistrationActive = await this.isRegistrationPeriodActive();
+    let registeredSections: CourseSection[] = [];
 
-    // Nếu không có trong cache, fallback về query database
+    if (isRegistrationActive) {
+      // Lấy danh sách CourseSection đã đăng ký từ Redis cache
+      registeredSections = await this.courseSectionRepository.getStudentRegisteredSectionsFromCache(
+        foundStudent.id,
+        foundStudent.currentSemester,
+      );
+    }
+
+    // Nếu không có trong cache hoặc không trong thời gian đăng ký, lấy từ database
     if (!registeredSections || registeredSections.length === 0) {
       const registrations = await this.registrationRepository.find({
         where: {
@@ -316,13 +394,13 @@ export class RegistrationService {
         throw new BadRequestException('Sinh viên không tồn tại!');
       }
 
-      registration = await this.registrationRepository.findOne({
-        where: {
-          sectionId,
-          studentId: student.id,
-        },
-        relations: ['student', 'section'],
-      });
+      // registration = await this.registrationRepository.findOne({
+      //   where: {
+      //     sectionId,
+      //     studentId: student.id,
+      //   },
+      //   relations: ['student', 'section'],
+      // });
     }
 
     // Nếu chỉ có sectionId mà không tìm thấy registration, tạm thời xóa Redis trực tiếp
