@@ -128,8 +128,10 @@ python stress_test.py --url http://localhost:4000 --email student@example.com --
 - Script sẽ ghi nhận và tiếp tục với lần test tiếp theo
 
 
-
-
+### Test với locust
+```shell
+locust -f locust-test.py --host=http://localhost:3004
+```
 
 
 
